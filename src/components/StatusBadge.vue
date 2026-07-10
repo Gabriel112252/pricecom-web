@@ -31,6 +31,10 @@ const STATUS_MAP = {
   // Channel credential status
   pending: { label: 'Pendente', dot: 'bg-slate-400', classes: 'bg-slate-100 text-slate-600 ring-slate-500/20' },
   active: { label: 'Conectado', dot: 'bg-emerald-500', classes: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' },
+  // Integration (idworks) / FinancialSource (Pagar.me) status
+  connected: { label: 'Conectado', dot: 'bg-emerald-500', classes: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' },
+  disconnected: { label: 'Pendente', dot: 'bg-slate-400', classes: 'bg-slate-100 text-slate-600 ring-slate-500/20' },
+  inactive: { label: 'Pendente', dot: 'bg-slate-400', classes: 'bg-slate-100 text-slate-600 ring-slate-500/20' },
 }
 
 const config = computed(() => STATUS_MAP[props.status] ?? STATUS_MAP.idle)
