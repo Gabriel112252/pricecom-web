@@ -90,6 +90,7 @@ async function handleSyncNow() {
     <CredentialForm
       v-if="showForm"
       class="mt-4 border-t border-slate-100 pt-4"
+      :channel="channel.channel"
       :required-fields="channel.required_fields"
       :submitting="connecting"
       @submit="handleConnectSubmit"

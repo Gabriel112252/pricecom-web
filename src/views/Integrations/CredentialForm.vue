@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 
 const props = defineProps({
+  channel: { type: String, default: '' },
   requiredFields: { type: Array, required: true },
   submitting: { type: Boolean, default: false },
 })
@@ -11,12 +12,20 @@ const emit = defineEmits(['submit', 'cancel'])
 const FIELD_LABELS = {
   alias: 'Alias da loja (Yampi)',
   token: 'Token',
-  secret_key: 'Secret Key',
+  secret_key: 'Secret Key (API)',
   shop_domain: 'Domínio da loja (ex: minha-loja.myshopify.com)',
   access_token: 'Access Token',
   app_key: 'App Key',
   app_secret: 'App Secret',
-  webhook_secret: 'Webhook Secret (Client Secret do app Shopify)',
+  webhook_secret: 'Webhook Secret',
+}
+
+// webhook_secret é gerado numa tela de Webhooks separada da tela de
+// credenciais de API em cada plataforma — valor diferente de secret_key /
+// access_token, então o rótulo precisa deixar isso explícito por canal.
+const CHANNEL_FIELD_LABELS = {
+  yampi: { webhook_secret: 'Chave Secreta do Webhook (tela Webhooks da Yampi — diferente da Secret Key acima)' },
+  shopify: { webhook_secret: 'Webhook Secret (Client Secret do app Shopify)' },
 }
 
 const SECRET_FIELDS = new Set(['token', 'secret_key', 'access_token', 'app_secret', 'webhook_secret'])
@@ -31,6 +40,10 @@ watch(
   { immediate: true },
 )
 
+function fieldLabel(field) {
+  return CHANNEL_FIELD_LABELS[props.channel]?.[field] || FIELD_LABELS[field] || field
+}
+
 function handleSubmit() {
   emit('submit', { ...form.value })
 }
@@ -39,7 +52,7 @@ function handleSubmit() {
 <template>
   <form class="space-y-3" @submit.prevent="handleSubmit">
     <div v-for="field in requiredFields" :key="field">
-      <label class="text-xs font-medium text-slate-500">{{ FIELD_LABELS[field] || field }}</label>
+      <label class="text-xs font-medium text-slate-500">{{ fieldLabel(field) }}</label>
       <input
         v-model="form[field]"
         :type="SECRET_FIELDS.has(field) ? 'password' : 'text'"
