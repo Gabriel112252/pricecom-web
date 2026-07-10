@@ -20,12 +20,14 @@ const props = defineProps({
   onConnect: { type: Function, required: true },
   onSync: { type: Function, required: true },
   onUpdateRole: { type: Function, required: true },
+  onBackfillOrders: { type: Function, default: null },
 })
 
 const toast = useToast()
 const showForm = ref(false)
 const connecting = ref(false)
 const syncing = ref(false)
+const backfilling = ref(false)
 
 async function handleConnectSubmit(credentials) {
   connecting.value = true
@@ -54,6 +56,36 @@ async function handleSyncNow() {
   } finally {
     syncing.value = false
   }
+}
+
+async function handleBackfillOrders() {
+  const confirmed = window.confirm(
+    'Isso vai importar pedidos dos últimos 30 dias da Yampi. Pode levar alguns minutos. Continuar?',
+  )
+  if (!confirmed) return
+
+  backfilling.value = true
+  try {
+    const result = await props.onBackfillOrders(30)
+    if (result.success) {
+      toast.success(backfillResultMessage(result))
+    } else {
+      toast.error(result.error_message || 'Falha ao importar pedidos.')
+    }
+  } catch (e) {
+    toast.error(e.response?.data?.error || 'Não foi possível importar os pedidos agora.')
+  } finally {
+    backfilling.value = false
+  }
+}
+
+function backfillResultMessage(result) {
+  let message = `${result.created_count} pedido(s) importado(s), ${result.updated_count} já existente(s) atualizado(s)`
+  if (result.skipped_count > 0) {
+    const reasons = [...new Set((result.skipped || []).map((s) => s.reason))].join(', ')
+    message += `, ${result.skipped_count} ignorado(s) por ${reasons}`
+  }
+  return message
 }
 </script>
 
@@ -84,6 +116,16 @@ async function handleSyncNow() {
         @click="handleSyncNow"
       >
         {{ syncing ? 'Sincronizando...' : 'Sincronizar agora' }}
+      </button>
+      <button
+        v-if="channel.channel === 'yampi'"
+        type="button"
+        :disabled="channel.status === 'pending' || backfilling"
+        title="Importação pontual — não é uma sincronização recorrente"
+        class="rounded-lg border border-dashed border-indigo-300 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+        @click="handleBackfillOrders"
+      >
+        {{ backfilling ? 'Importando...' : 'Importar últimos 30 dias' }}
       </button>
     </div>
 

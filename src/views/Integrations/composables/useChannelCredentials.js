@@ -54,10 +54,23 @@ export function useChannelCredentials() {
     return data
   }
 
+  // One-off backfill (not a recurring sync) — the response has no `channel`
+  // sub-object to apply directly, but a failed auth attempt can still flip
+  // the credential's status server-side, so resync quietly afterwards same
+  // as #connect does.
+  async function backfillOrders(days) {
+    try {
+      const { data } = await api.post('/integrations/yampi/backfill_orders', { days })
+      return data
+    } finally {
+      channels.value = await fetchChannelsSilently().catch(() => channels.value)
+    }
+  }
+
   function applyChannelUpdate(updated) {
     const index = channels.value.findIndex((c) => c.channel === updated.channel)
     if (index !== -1) channels.value[index] = updated
   }
 
-  return { channels, loading, errorMessage, fetchChannels, connect, syncNow, updateRole }
+  return { channels, loading, errorMessage, fetchChannels, connect, syncNow, updateRole, backfillOrders }
 }

@@ -3,7 +3,8 @@ import { onMounted } from 'vue'
 import { useChannelCredentials } from './composables/useChannelCredentials'
 import ChannelCard from './ChannelCard.vue'
 
-const { channels, loading, errorMessage, fetchChannels, connect, syncNow, updateRole } = useChannelCredentials()
+const { channels, loading, errorMessage, fetchChannels, connect, syncNow, updateRole, backfillOrders } =
+  useChannelCredentials()
 
 onMounted(fetchChannels)
 </script>
@@ -31,6 +32,7 @@ onMounted(fetchChannels)
         :on-connect="connect"
         :on-sync="syncNow"
         :on-update-role="updateRole"
+        :on-backfill-orders="backfillOrders"
       />
     </div>
   </div>
