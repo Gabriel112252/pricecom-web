@@ -19,6 +19,7 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.token,
+    isAdmin: (state) => state.user?.role === 'admin',
   },
 
   actions: {
@@ -28,6 +29,15 @@ export const useAuthStore = defineStore('auth', {
       this.user = data.user
       localStorage.setItem(TOKEN_KEY, data.token)
       localStorage.setItem(USER_KEY, JSON.stringify(data.user))
+    },
+
+    // Refreshes the role (and other profile fields) from the server rather
+    // than trusting whatever was cached in localStorage at last login —
+    // matters if an admin changes a user's role between sessions.
+    async fetchMe() {
+      const { data } = await api.get('/auth/me')
+      this.user = { ...this.user, ...data.user }
+      localStorage.setItem(USER_KEY, JSON.stringify(this.user))
     },
 
     logout() {
