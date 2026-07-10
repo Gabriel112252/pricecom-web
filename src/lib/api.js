@@ -3,7 +3,7 @@ import axios from 'axios'
 export const TOKEN_KEY = 'pricecom_token'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://pricecom-pricecom-api.dzxtro.easypanel.host/api/v1',
 })
 
 api.interceptors.request.use((config) => {
