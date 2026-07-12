@@ -18,19 +18,25 @@ const toast = useToast()
 const showForm = ref(false)
 const connecting = ref(false)
 const syncing = ref(false)
+const connectError = ref('')
 const form = ref(Object.fromEntries(props.fields.map((f) => [f.key, ''])))
 
 const NOT_CONNECTED_STATUSES = ['pending', 'disconnected', 'inactive']
 const isConnected = () => !NOT_CONNECTED_STATUSES.includes(props.status)
 
+// Shown inline in the form (persistent, not just a toast that can be
+// missed/dismissed) so a rejected credential is unambiguous — e.g. "E-mail
+// ou senha inválidos" for idworks, not a generic "erro ao conectar".
 async function handleSubmit() {
   connecting.value = true
+  connectError.value = ''
   try {
     await props.onConnect({ ...form.value })
     toast.success(`${props.title} conectado com sucesso.`)
     showForm.value = false
   } catch (e) {
-    toast.error(e.response?.data?.errors?.[0] || `Não foi possível conectar ${props.title}.`)
+    connectError.value = e.response?.data?.errors?.[0] || `Não foi possível conectar ${props.title}.`
+    toast.error(connectError.value)
   } finally {
     connecting.value = false
   }
@@ -68,7 +74,7 @@ async function handleSync() {
       <button
         type="button"
         class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-        @click="showForm = !showForm"
+        @click="showForm = !showForm; connectError = ''"
       >
         {{ isConnected() ? 'Editar credenciais' : 'Conectar' }}
       </button>
@@ -84,6 +90,9 @@ async function handleSync() {
     </div>
 
     <form v-if="showForm" class="mt-4 space-y-3 border-t border-slate-100 pt-4" @submit.prevent="handleSubmit">
+      <p v-if="connectError" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+        {{ connectError }}
+      </p>
       <div v-for="field in fields" :key="field.key">
         <label class="text-xs font-medium text-slate-500">{{ field.label }}</label>
         <input

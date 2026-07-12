@@ -58,8 +58,9 @@ onMounted(() => {
           :status="idworksIntegration.status"
           :last-synced-at="idworksIntegration.last_synced_at"
           :fields="[
-            { key: 'base_url', label: 'URL base da API (ex: https://cliente.idworks.com.br/api/v1)' },
-            { key: 'api_key', label: 'API Key', secret: true },
+            { key: 'base_url', label: 'URL base da API (ex: https://hidrabene.api-idworks.com.br/1.0)' },
+            { key: 'email', label: 'E-mail' },
+            { key: 'password', label: 'Senha', secret: true },
           ]"
           :on-connect="connectIdworks"
           :on-sync="syncIdworks"

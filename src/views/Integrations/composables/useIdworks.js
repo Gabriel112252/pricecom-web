@@ -23,13 +23,15 @@ export function useIdworks() {
 
   async function sync() {
     const { data } = await api.post('/integrations/idworks/sync')
-    if (data.success ?? true) {
-      await fetchStatus()
-    }
+    // Always refresh — a failed sync (e.g. credentials expired mid-flight)
+    // flips the integration to status "error" server-side, and the card
+    // needs to show that regardless of whether this particular sync call
+    // itself succeeded or failed.
+    await fetchStatus()
     return {
       success: data.success,
       error_message: data.error_message,
-      summary: `${data.products_synced_count} produto(s) e ${data.invoices_synced_count} nota(s) fiscal(is) sincronizados.`,
+      summary: `${data.products_synced_count} produto(s) e ${data.orders_synced_count} pedido(s) sincronizados.`,
     }
   }
 
