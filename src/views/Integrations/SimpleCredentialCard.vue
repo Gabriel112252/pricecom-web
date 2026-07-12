@@ -12,6 +12,7 @@ const props = defineProps({
   onConnect: { type: Function, required: true },
   onSync: { type: Function, required: true },
   syncLabel: { type: String, default: 'Sincronizar agora' },
+  recentLogs: { type: Array, default: () => [] },
 })
 
 const toast = useToast()
@@ -21,7 +22,7 @@ const syncing = ref(false)
 const connectError = ref('')
 const form = ref(Object.fromEntries(props.fields.map((f) => [f.key, ''])))
 
-const NOT_CONNECTED_STATUSES = ['pending', 'disconnected', 'inactive']
+const NOT_CONNECTED_STATUSES = ['pending', 'disconnected', 'inactive', 'error']
 const isConnected = () => !NOT_CONNECTED_STATUSES.includes(props.status)
 
 // Shown inline in the form (persistent, not just a toast that can be
@@ -56,6 +57,17 @@ async function handleSync() {
   } finally {
     syncing.value = false
   }
+}
+
+function logSummary(log) {
+  if (log.status !== 'success') return log.error_message || 'erro'
+
+  const parts = []
+  if (log.received_count !== null && log.received_count !== undefined) parts.push(`${log.received_count} recebidos`)
+  if (log.updated_count !== null && log.updated_count !== undefined) parts.push(`${log.updated_count} atualizados`)
+  if (log.ignored_count !== null && log.ignored_count !== undefined) parts.push(`${log.ignored_count} ignorados`)
+  if (parts.length === 0 && log.synced_count !== null && log.synced_count !== undefined) parts.push(`${log.synced_count} sincronizados`)
+  return parts.join(', ') || 'concluído'
 }
 </script>
 
@@ -120,5 +132,21 @@ async function handleSync() {
         </button>
       </div>
     </form>
+
+    <div v-if="recentLogs.length" class="mt-4 border-t border-slate-100 pt-4">
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Últimas sincronizações</p>
+      <ul class="mt-2 space-y-1.5">
+        <li v-for="log in recentLogs" :key="log.id" class="flex items-center justify-between gap-2 text-xs">
+          <span class="text-slate-500">{{ formatDateTime(log.started_at) }}</span>
+          <span
+            class="truncate"
+            :class="log.status === 'success' ? 'text-emerald-600' : log.status === 'skipped' ? 'text-slate-500' : 'text-red-600'"
+          >
+            {{ logSummary(log) }}
+          </span>
+        </li>
+      </ul>
+    </div>
+    <p v-else class="mt-4 border-t border-slate-100 pt-4 text-xs text-slate-400">Nenhuma sincronização ainda.</p>
   </div>
 </template>

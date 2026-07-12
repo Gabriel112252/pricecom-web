@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useChannelCredentials } from './composables/useChannelCredentials'
 import { useIdworks } from './composables/useIdworks'
 import { usePagarme } from './composables/usePagarme'
@@ -14,6 +14,13 @@ const { integration: idworksIntegration, fetchStatus: fetchIdworksStatus, connec
   useIdworks()
 const { source: pagarmeSource, fetchStatus: fetchPagarmeStatus, connect: connectPagarme, sync: syncPagarme } =
   usePagarme()
+
+const activeTab = ref('marketplaces')
+
+const tabs = [
+  { key: 'marketplaces', label: 'Lojas e marketplaces' },
+  { key: 'erp_finance', label: 'ERP e financeiro' },
+]
 
 onMounted(() => {
   fetchChannels()
@@ -36,27 +43,57 @@ onMounted(() => {
       {{ errorMessage }}
     </div>
 
-    <div v-else class="grid grid-cols-1 gap-5 lg:grid-cols-3">
-      <ChannelCard
-        v-for="channel in channels"
-        :key="channel.channel"
-        :channel="channel"
-        :all-channels="channels"
-        :on-connect="connect"
-        :on-sync="syncNow"
-        :on-update-role="updateRole"
-        :on-backfill-orders="backfillOrders"
-      />
+    <div class="border-b border-slate-200">
+      <nav class="flex gap-1">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          type="button"
+          class="border-b-2 px-4 py-2.5 text-sm font-medium transition"
+          :class="
+            activeTab === tab.key
+              ? 'border-indigo-500 text-indigo-700'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          "
+          @click="activeTab = tab.key"
+        >
+          {{ tab.label }}
+        </button>
+      </nav>
     </div>
 
-    <div>
-      <h2 class="text-lg font-semibold text-slate-900">ERP</h2>
-      <p class="mt-1 text-sm text-slate-500">Custo real, imposto e frete real de produtos e pedidos.</p>
-      <div class="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-3">
+    <section v-show="activeTab === 'marketplaces'" class="space-y-4">
+      <div>
+        <h2 class="text-lg font-semibold text-slate-900">Lojas e marketplaces</h2>
+        <p class="mt-1 text-sm text-slate-500">Canais de venda, estoque e pedidos.</p>
+      </div>
+
+      <div v-if="!loading && !errorMessage" class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <ChannelCard
+          v-for="channel in channels"
+          :key="channel.channel"
+          :channel="channel"
+          :all-channels="channels"
+          :on-connect="connect"
+          :on-sync="syncNow"
+          :on-update-role="updateRole"
+          :on-backfill-orders="backfillOrders"
+        />
+      </div>
+    </section>
+
+    <section v-show="activeTab === 'erp_finance'" class="space-y-5">
+      <div>
+        <h2 class="text-lg font-semibold text-slate-900">ERP e financeiro</h2>
+        <p class="mt-1 text-sm text-slate-500">Custo real, frete real e reconciliação de pagamentos.</p>
+      </div>
+
+      <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <SimpleCredentialCard
           title="idworks"
           :status="idworksIntegration.status"
           :last-synced-at="idworksIntegration.last_synced_at"
+          :recent-logs="idworksIntegration.recent_logs || []"
           :fields="[
             { key: 'base_url', label: 'URL base da API (ex: https://hidrabene.api-idworks.com.br/1.0)' },
             { key: 'email', label: 'E-mail' },
@@ -65,24 +102,18 @@ onMounted(() => {
           :on-connect="connectIdworks"
           :on-sync="syncIdworks"
         />
-      </div>
-    </div>
-
-    <div>
-      <h2 class="text-lg font-semibold text-slate-900">Financeiro</h2>
-      <p class="mt-1 text-sm text-slate-500">Reconciliação automática de pagamentos, substituindo o CSV manual.</p>
-      <div class="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-3">
         <SimpleCredentialCard
           title="Pagar.me"
           :status="pagarmeSource.status"
           :last-synced-at="pagarmeSource.last_synced_at"
+          :recent-logs="pagarmeSource.recent_logs || []"
           :fields="[{ key: 'api_key', label: 'Secret Key', secret: true }]"
           :on-connect="connectPagarme"
           :on-sync="syncPagarme"
         />
       </div>
-    </div>
 
-    <DataSourceConfigSection />
+      <DataSourceConfigSection />
+    </section>
   </div>
 </template>

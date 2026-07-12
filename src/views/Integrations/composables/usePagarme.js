@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import api from '@/lib/api'
 
 export function usePagarme() {
-  const source = ref({ status: 'inactive', last_synced_at: null })
+  const source = ref({ status: 'inactive', last_synced_at: null, recent_logs: [] })
 
   // Reuses the generic /financial_sources index (provider filter) instead
   // of a dedicated status endpoint — Pagar.me is just a FinancialSource.

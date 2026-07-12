@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import api from '@/lib/api'
 
 export function useIdworks() {
-  const integration = ref({ status: 'disconnected', last_synced_at: null })
+  const integration = ref({ status: 'disconnected', last_synced_at: null, recent_logs: [] })
 
   // Reuses the generic /integrations index (provider filter) instead of a
   // dedicated status endpoint — idworks is just an Integration record.
@@ -31,7 +31,7 @@ export function useIdworks() {
     return {
       success: data.success,
       error_message: data.error_message,
-      summary: `${data.products_synced_count} produto(s) e ${data.orders_synced_count} pedido(s) sincronizados.`,
+      summary: `${data.products_received_count ?? 0} produto(s) recebidos, ${data.products_updated_count ?? 0} atualizado(s), ${data.products_ignored_count ?? 0} ignorado(s); ${data.order_freights_updated_count ?? data.orders_synced_count ?? 0} frete(s) atualizado(s).`,
     }
   }
 

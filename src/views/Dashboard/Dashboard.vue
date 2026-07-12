@@ -113,12 +113,28 @@ const granularity = computed(() => summary.value?.granularity ?? 'day')
         <section v-show="activeTab === 'overview'" class="space-y-6">
           <AttentionBanner :conflicts="summary.conflicts" />
 
+          <div
+            v-if="summary.data_quality?.orders_without_cost || summary.data_quality?.products_without_sku_match"
+            class="rounded-lg border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-medium text-amber-900"
+          >
+            {{ summary.data_quality.orders_without_cost }} pedido(s) sem custo completo e
+            {{ summary.data_quality.products_without_sku_match }} SKU(s) do IDWorks sem produto correspondente.
+          </div>
+
           <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
             <KpiCard label="Receita bruta" :value="formatMoney(summary.revenue.gross)" :delta-pct="summary.revenue.gross_vs_previous_pct" />
             <KpiCard label="Receita líquida" :value="formatMoney(summary.revenue.net)" :delta-pct="summary.revenue.net_vs_previous_pct" />
             <KpiCard label="Ticket médio" :value="formatMoney(summary.orders.aov)" :delta-pct="summary.orders.aov_vs_previous_pct" />
             <KpiCard label="Pedidos" :value="String(summary.orders.count)" :delta-pct="summary.orders.vs_previous_period_pct" />
             <KpiCard label="Margem média" :value="formatPct(summary.margin.avg_pct)" :delta-pct="summary.margin.avg_pct_vs_previous_pct" />
+          </div>
+
+          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
+            <KpiCard label="Custo produtos" :value="formatMoney(summary.financial.product_cost)" :delta-pct="summary.financial.product_cost_vs_previous_pct" />
+            <KpiCard label="Frete" :value="formatMoney(summary.financial.freight)" />
+            <KpiCard label="Impostos" :value="formatMoney(summary.financial.taxes)" />
+            <KpiCard label="Descontos" :value="formatMoney(summary.financial.discounts)" />
+            <KpiCard label="Lucro" :value="formatMoney(summary.financial.profit)" :delta-pct="summary.financial.profit_vs_previous_pct" />
           </div>
 
           <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">

@@ -49,6 +49,10 @@ async function changeSource(config, source) {
   }
 }
 
+function availableSources(config) {
+  return config.available_sources?.length ? config.available_sources : []
+}
+
 onMounted(load)
 </script>
 
@@ -73,13 +77,14 @@ onMounted(load)
           <td class="py-2">
             <select
               :value="config.source || ''"
-              :disabled="savingType === config.data_type"
+              :disabled="savingType === config.data_type || availableSources(config).length === 0"
               class="rounded-lg border border-slate-300 px-2 py-1 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none disabled:opacity-50"
               @change="changeSource(config, $event.target.value)"
             >
-              <option value="" disabled>Não configurado</option>
-              <option value="idworks">idworks</option>
-              <option value="pagarme">Pagar.me</option>
+              <option value="" disabled>{{ availableSources(config).length ? 'Não configurado' : 'Nenhuma fonte disponível' }}</option>
+              <option v-for="source in availableSources(config)" :key="source" :value="source">
+                {{ SOURCE_LABELS[source] || source }}
+              </option>
             </select>
           </td>
         </tr>
