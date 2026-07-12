@@ -54,13 +54,13 @@ export function useChannelCredentials() {
     return data
   }
 
-  // One-off backfill (not a recurring sync) — the response has no `channel`
-  // sub-object to apply directly, but a failed auth attempt can still flip
-  // the credential's status server-side, so resync quietly afterwards same
-  // as #connect does.
+  // Enqueues the same Yampi order polling job used by the scheduler. The
+  // response comes back immediately (HTTP 202), so refresh quietly for the
+  // latest cursor/log status rather than expecting import counters inline.
   async function backfillOrders(days) {
     try {
       const { data } = await api.post('/integrations/yampi/backfill_orders', { days })
+      if (data.channel) applyChannelUpdate(data.channel)
       return data
     } finally {
       channels.value = await fetchChannelsSilently().catch(() => channels.value)

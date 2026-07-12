@@ -60,15 +60,17 @@ async function handleSyncNow() {
 
 async function handleBackfillOrders() {
   const confirmed = window.confirm(
-    'Isso vai importar pedidos dos últimos 30 dias da Yampi. Pode levar alguns minutos. Continuar?',
+    'Isso vai enfileirar a sincronização de pedidos da Yampi. Na primeira execução, serão buscados os últimos 30 dias. Continuar?',
   )
   if (!confirmed) return
 
   backfilling.value = true
   try {
     const result = await props.onBackfillOrders(30)
-    if (result.success) {
-      toast.success(backfillResultMessage(result))
+    if (result.enqueued) {
+      toast.success('Sincronização de pedidos enfileirada.')
+    } else if (result.success) {
+      toast.success('Sincronização de pedidos iniciada.')
     } else {
       toast.error(result.error_message || 'Falha ao importar pedidos.')
     }
@@ -79,13 +81,15 @@ async function handleBackfillOrders() {
   }
 }
 
-function backfillResultMessage(result) {
-  let message = `${result.created_count} pedido(s) importado(s), ${result.updated_count} já existente(s) atualizado(s)`
-  if (result.skipped_count > 0) {
-    const reasons = [...new Set((result.skipped || []).map((s) => s.reason))].join(', ')
-    message += `, ${result.skipped_count} ignorado(s) por ${reasons}`
+function logLabel(log) {
+  if (log.action === 'yampi_order_polling') {
+    if (log.status === 'success') {
+      return `${log.created_count ?? 0} criados, ${log.updated_count ?? 0} atualizados, ${log.unchanged_count ?? 0} sem alteração`
+    }
+    return log.error_message || `${log.error_count ?? 0} erro(s), ${log.ignored_count ?? 0} ignorado(s)`
   }
-  return message
+
+  return log.status === 'success' ? `${log.synced_count ?? 0} produtos` : log.error_message || 'erro'
 }
 </script>
 
@@ -115,17 +119,17 @@ function backfillResultMessage(result) {
         class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
         @click="handleSyncNow"
       >
-        {{ syncing ? 'Sincronizando...' : 'Sincronizar agora' }}
+        {{ syncing ? 'Sincronizando...' : channel.channel === 'yampi' ? 'Sincronizar produtos' : 'Sincronizar agora' }}
       </button>
       <button
         v-if="channel.channel === 'yampi'"
         type="button"
         :disabled="channel.status === 'pending' || backfilling"
-        title="Importação pontual — não é uma sincronização recorrente"
+        title="Sincronização assíncrona de pedidos da Yampi"
         class="rounded-lg border border-dashed border-indigo-300 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
         @click="handleBackfillOrders"
       >
-        {{ backfilling ? 'Importando...' : 'Importar últimos 30 dias' }}
+        {{ backfilling ? 'Enfileirando...' : 'Sincronizar agora' }}
       </button>
     </div>
 
@@ -152,7 +156,7 @@ function backfillResultMessage(result) {
         <li v-for="log in channel.recent_logs" :key="log.id" class="flex items-center justify-between gap-2 text-xs">
           <span class="text-slate-500">{{ formatDateTime(log.started_at) }}</span>
           <span class="truncate" :class="log.status === 'success' ? 'text-emerald-600' : 'text-red-600'">
-            {{ log.status === 'success' ? `${log.synced_count ?? 0} produtos` : log.error_message || 'erro' }}
+            {{ logLabel(log) }}
           </span>
         </li>
       </ul>
