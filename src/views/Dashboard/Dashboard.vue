@@ -5,11 +5,11 @@ import { formatMoney, formatPct } from '@/lib/format'
 import { DASHBOARD_TABS } from './lib/tabs'
 import PeriodFilter from './PeriodFilter.vue'
 import ChannelFilter from './ChannelFilter.vue'
-import KpiCard from './KpiCard.vue'
-import AttentionBanner from './AttentionBanner.vue'
-import RevenueChart from './RevenueChart.vue'
-import MarginTrend from './MarginTrend.vue'
-import ReconciliationSummary from './ReconciliationSummary.vue'
+import ExecutiveKpiCard from './ExecutiveKpiCard.vue'
+import RevenueOrdersChart from './RevenueOrdersChart.vue'
+import SalesByChannelChart from './SalesByChannelChart.vue'
+import FinancialCompositionBlock from './FinancialCompositionBlock.vue'
+import DataQualityBlock from './DataQualityBlock.vue'
 import OrderVolumeChart from './OrderVolumeChart.vue'
 import RevenueByHourChart from './RevenueByHourChart.vue'
 import ChannelBreakdown from './ChannelBreakdown.vue'
@@ -68,6 +68,26 @@ function handleChannelChange(ids) {
 onMounted(load)
 
 const granularity = computed(() => summary.value?.granularity ?? 'day')
+const kpis = computed(() => summary.value?.kpis ?? {})
+const dataQuality = computed(() => summary.value?.data_quality ?? {})
+const financialComposition = computed(() => summary.value?.financial_composition ?? {})
+const revenueTimeline = computed(() => summary.value?.revenue_timeline ?? summary.value?.revenue?.by_day ?? [])
+const salesByChannel = computed(() => summary.value?.sales_by_channel ?? [])
+
+function contributionMarginValue() {
+  return kpis.value.contribution_margin_available ? formatPct(kpis.value.contribution_margin) : 'Indisponível'
+}
+
+function contributionMarginStatus() {
+  return kpis.value.contribution_margin_available ? 'default' : 'warning'
+}
+
+function coverageStatus() {
+  const coverage = Number(kpis.value.financial_coverage_percentage ?? 100)
+  if (coverage < 70) return 'critical'
+  if (coverage < 95) return 'warning'
+  return 'default'
+}
 </script>
 
 <template>
@@ -111,41 +131,55 @@ const granularity = computed(() => summary.value?.granularity ?? 'day')
       <div class="space-y-6 transition-opacity" :class="{ 'opacity-60': loading }">
         <!-- Visão Geral -->
         <section v-show="activeTab === 'overview'" class="space-y-6">
-          <AttentionBanner :conflicts="summary.conflicts" />
-
-          <div
-            v-if="summary.data_quality?.orders_without_cost || summary.data_quality?.products_without_sku_match"
-            class="rounded-lg border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-medium text-amber-900"
-          >
-            {{ summary.data_quality.orders_without_cost }} pedido(s) sem custo completo e
-            {{ summary.data_quality.products_without_sku_match }} SKU(s) do IDWorks sem produto correspondente.
-          </div>
-
-          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
-            <KpiCard label="Receita bruta" :value="formatMoney(summary.revenue.gross)" :delta-pct="summary.revenue.gross_vs_previous_pct" />
-            <KpiCard label="Receita líquida" :value="formatMoney(summary.revenue.net)" :delta-pct="summary.revenue.net_vs_previous_pct" />
-            <KpiCard label="Ticket médio" :value="formatMoney(summary.orders.aov)" :delta-pct="summary.orders.aov_vs_previous_pct" />
-            <KpiCard label="Pedidos" :value="String(summary.orders.count)" :delta-pct="summary.orders.vs_previous_period_pct" />
-            <KpiCard label="Margem média" :value="formatPct(summary.margin.avg_pct)" :delta-pct="summary.margin.avg_pct_vs_previous_pct" />
-          </div>
-
-          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
-            <KpiCard label="Custo produtos" :value="formatMoney(summary.financial.product_cost)" :delta-pct="summary.financial.product_cost_vs_previous_pct" />
-            <KpiCard label="Frete" :value="formatMoney(summary.financial.freight)" />
-            <KpiCard label="Impostos" :value="formatMoney(summary.financial.taxes)" />
-            <KpiCard label="Descontos" :value="formatMoney(summary.financial.discounts)" />
-            <KpiCard label="Lucro" :value="formatMoney(summary.financial.profit)" :delta-pct="summary.financial.profit_vs_previous_pct" />
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <ExecutiveKpiCard
+              label="Receita líquida"
+              :value="formatMoney(kpis.net_revenue)"
+              :delta-pct="kpis.net_revenue_vs_previous_pct"
+              :detail="`Bruta ${formatMoney(kpis.gross_revenue)}`"
+              tooltip="Receita bruta menos descontos e reembolsos."
+            />
+            <ExecutiveKpiCard
+              label="Pedidos"
+              :value="String(kpis.orders_count ?? 0)"
+              :delta-pct="kpis.orders_vs_previous_pct"
+              :detail="`${dataQuality.complete_orders_count ?? 0} completos`"
+            />
+            <ExecutiveKpiCard
+              label="Ticket líquido"
+              :value="formatMoney(kpis.average_ticket)"
+              :delta-pct="kpis.average_ticket_vs_previous_pct"
+              detail="Receita líquida / pedidos"
+            />
+            <ExecutiveKpiCard
+              label="Descontos"
+              :value="formatMoney(kpis.discounts_total)"
+              :detail="formatPct(kpis.discounts_percentage)"
+              tooltip="Soma dos descontos aplicados sobre pedidos válidos."
+            />
+            <ExecutiveKpiCard
+              label="Margem contribuição"
+              :value="contributionMarginValue()"
+              :status="contributionMarginStatus()"
+              :detail="kpis.contribution_margin_available ? 'Resultado / receita líquida' : `${dataQuality.incomplete_orders_count ?? 0} incompletos`"
+              :tooltip="kpis.contribution_margin_unavailable_reason || 'Resultado dividido pela receita líquida.'"
+            />
+            <ExecutiveKpiCard
+              label="Cobertura financeira"
+              :value="formatPct(kpis.financial_coverage_percentage)"
+              :status="coverageStatus()"
+              :detail="`${dataQuality.incomplete_orders_count ?? 0} incompletos`"
+              tooltip="Percentual de pedidos com custo, frete e impostos exigidos pela fonte configurada."
+            />
           </div>
 
           <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            <RevenueChart :by-day="summary.revenue.by_day" :granularity="granularity" />
-            <MarginTrend :trend="summary.margin.trend" :avg-pct="summary.margin.avg_pct" :granularity="granularity" />
-            <ReconciliationSummary
-              :matched-pct="summary.reconciliation.matched_pct"
-              :disputed="summary.reconciliation.disputed"
-              :unmatched="summary.reconciliation.unmatched"
-            />
+            <RevenueOrdersChart :timeline="revenueTimeline" :granularity="granularity" />
+            <SalesByChannelChart :channels="salesByChannel" />
           </div>
+
+          <FinancialCompositionBlock :composition="financialComposition" />
+          <DataQualityBlock :quality="dataQuality" />
         </section>
 
         <!-- Vendas -->

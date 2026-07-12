@@ -33,6 +33,8 @@ const activeTabIndex = ref(0)
 
 const activeTab = computed(() => DASHBOARD_TABS[activeTabIndex.value].key)
 const granularity = computed(() => summary.value?.granularity ?? 'day')
+const marginAvailable = computed(() => summary.value?.margin?.available !== false)
+const marginKpiValue = computed(() => (marginAvailable.value ? formatPct(summary.value?.margin?.avg_pct) : 'Indisponível'))
 
 async function load() {
   try {
@@ -97,11 +99,14 @@ onBeforeUnmount(() => {
             <KpiCard label="Receita líquida" :value="formatMoney(summary.revenue.net)" :delta-pct="summary.revenue.net_vs_previous_pct" />
             <KpiCard label="Ticket médio" :value="formatMoney(summary.orders.aov)" :delta-pct="summary.orders.aov_vs_previous_pct" />
             <KpiCard label="Pedidos" :value="String(summary.orders.count)" :delta-pct="summary.orders.vs_previous_period_pct" />
-            <KpiCard label="Margem média" :value="formatPct(summary.margin.avg_pct)" :delta-pct="summary.margin.avg_pct_vs_previous_pct" />
+            <KpiCard label="Margem média" :value="marginKpiValue" :delta-pct="summary.margin.avg_pct_vs_previous_pct" />
           </div>
           <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <RevenueChart :by-day="summary.revenue.by_day" :granularity="granularity" />
-            <MarginTrend :trend="summary.margin.trend" :avg-pct="summary.margin.avg_pct" :granularity="granularity" />
+            <div v-if="!marginAvailable" class="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm font-medium text-amber-900">
+              {{ summary.margin.unavailable_reason || 'Margem indisponível por dados financeiros incompletos.' }}
+            </div>
+            <MarginTrend v-else :trend="summary.margin.trend" :avg-pct="summary.margin.avg_pct" :granularity="granularity" />
             <ReconciliationSummary
               :matched-pct="summary.reconciliation.matched_pct"
               :disputed="summary.reconciliation.disputed"
@@ -198,4 +203,3 @@ onBeforeUnmount(() => {
   border-color: #1e293b;
 }
 </style>
-
