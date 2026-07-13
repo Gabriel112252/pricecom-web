@@ -8,6 +8,8 @@ import ChannelFilter from './ChannelFilter.vue'
 import ExecutiveKpiCard from './ExecutiveKpiCard.vue'
 import RevenueOrdersChart from './RevenueOrdersChart.vue'
 import SalesByChannelChart from './SalesByChannelChart.vue'
+import BrazilOrdersMap from './BrazilOrdersMap.vue'
+import CouponUsageChart from './CouponUsageChart.vue'
 import FinancialCompositionBlock from './FinancialCompositionBlock.vue'
 import DataQualityBlock from './DataQualityBlock.vue'
 import OrderVolumeChart from './OrderVolumeChart.vue'
@@ -73,20 +75,18 @@ const dataQuality = computed(() => summary.value?.data_quality ?? {})
 const financialComposition = computed(() => summary.value?.financial_composition ?? {})
 const revenueTimeline = computed(() => summary.value?.revenue_timeline ?? summary.value?.revenue?.by_day ?? [])
 const salesByChannel = computed(() => summary.value?.sales_by_channel ?? [])
-
-function contributionMarginValue() {
-  return kpis.value.contribution_margin_available ? formatPct(kpis.value.contribution_margin) : 'Indisponível'
-}
-
-function contributionMarginStatus() {
-  return kpis.value.contribution_margin_available ? 'default' : 'warning'
-}
+const regionalSales = computed(() => summary.value?.regional_sales ?? {})
+const coupons = computed(() => summary.value?.coupons ?? {})
 
 function coverageStatus() {
   const coverage = Number(kpis.value.financial_coverage_percentage ?? 100)
   if (coverage < 70) return 'critical'
   if (coverage < 95) return 'warning'
   return 'default'
+}
+
+function topRegionValue() {
+  return kpis.value.top_region_state || '—'
 }
 </script>
 
@@ -152,17 +152,16 @@ function coverageStatus() {
               detail="Receita líquida / pedidos"
             />
             <ExecutiveKpiCard
-              label="Descontos"
-              :value="formatMoney(kpis.discounts_total)"
-              :detail="formatPct(kpis.discounts_percentage)"
-              tooltip="Soma dos descontos aplicados sobre pedidos válidos."
+              label="Cupons"
+              :value="formatMoney(kpis.coupon_discount_total)"
+              :detail="`${kpis.coupon_orders_count ?? 0} pedidos · ${formatPct(kpis.coupon_usage_percentage)}`"
+              tooltip="Valor de desconto associado a códigos de cupom capturados dos pedidos."
             />
             <ExecutiveKpiCard
-              label="Margem contribuição"
-              :value="contributionMarginValue()"
-              :status="contributionMarginStatus()"
-              :detail="kpis.contribution_margin_available ? 'Resultado / receita líquida' : `${dataQuality.incomplete_orders_count ?? 0} incompletos`"
-              :tooltip="kpis.contribution_margin_unavailable_reason || 'Resultado dividido pela receita líquida.'"
+              label="Região líder"
+              :value="topRegionValue()"
+              :detail="`${kpis.top_region_orders_count ?? 0} pedidos · ${formatMoney(kpis.top_region_net_revenue)}`"
+              tooltip="UF com maior quantidade de pedidos no período."
             />
             <ExecutiveKpiCard
               label="Cobertura financeira"
@@ -178,8 +177,10 @@ function coverageStatus() {
             <SalesByChannelChart :channels="salesByChannel" />
           </div>
 
-          <FinancialCompositionBlock :composition="financialComposition" />
-          <DataQualityBlock :quality="dataQuality" />
+          <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <BrazilOrdersMap :regional-sales="regionalSales" />
+            <CouponUsageChart :coupons="coupons" />
+          </div>
         </section>
 
         <!-- Vendas -->
@@ -212,6 +213,8 @@ function coverageStatus() {
               :by-source="summary.reconciliation.by_source"
             />
           </div>
+          <FinancialCompositionBlock :composition="financialComposition" />
+          <DataQualityBlock :quality="dataQuality" />
         </section>
       </div>
     </template>
