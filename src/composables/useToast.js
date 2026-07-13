@@ -18,6 +18,7 @@ export function useToast() {
   return {
     toasts,
     success: (message, opts) => push(message, { ...opts, type: 'success' }),
+    info: (message, opts) => push(message, { ...opts, type: 'info' }),
     error: (message, opts) => push(message, { ...opts, type: 'error', timeout: opts?.timeout ?? 0 }),
     dismiss,
   }

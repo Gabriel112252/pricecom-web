@@ -11,6 +11,9 @@ const entries = computed(() =>
   [...(props.coupons.top_coupons || [])].sort((a, b) => Number(a.orders_count || 0) - Number(b.orders_count || 0)),
 )
 
+const displayDiscountTotal = computed(() => props.coupons.display_discount_total ?? props.coupons.total_discount ?? 0)
+const hasUncodedDiscounts = computed(() => Number(props.coupons.uncoded_discount_total || 0) > 0)
+
 const option = computed(() => ({
   textStyle: CHART_TEXT_STYLE,
   grid: { left: 8, right: 56, top: 8, bottom: 8, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
@@ -69,13 +72,17 @@ const option = computed(() => ({
         <p class="mt-0.5 text-xs text-slate-400">Uso por código aplicado</p>
       </div>
       <div class="text-right text-xs text-slate-500">
-        <p class="font-semibold text-slate-900">{{ formatMoney(coupons.total_discount) }}</p>
-        <p>{{ coupons.orders_count || 0 }} pedidos com cupom</p>
+        <p class="font-semibold text-slate-900">{{ formatMoney(displayDiscountTotal) }}</p>
+        <p v-if="coupons.has_coupon_codes">{{ coupons.orders_count || 0 }} pedidos com cupom</p>
+        <p v-else>{{ coupons.uncoded_discount_orders_count || 0 }} descontos sem código</p>
       </div>
     </div>
 
-    <div v-if="entries.length === 0" class="chart-frame mt-2 flex items-center justify-center text-sm text-slate-400">
-      Nenhum cupom registrado no período.
+    <div v-if="entries.length === 0" class="chart-frame mt-2 flex flex-col items-center justify-center text-center text-sm text-slate-400">
+      <p v-if="hasUncodedDiscounts" class="max-w-sm">
+        Existem {{ coupons.uncoded_discount_orders_count || 0 }} pedido(s) com desconto, mas nenhum código de cupom foi capturado nesses pedidos.
+      </p>
+      <p v-else>Nenhum cupom registrado no período.</p>
     </div>
     <v-chart v-else class="mt-2 w-full" :style="{ height: `${Math.max(entries.length * 42, 220)}px` }" :option="option" autoresize />
   </div>

@@ -88,6 +88,14 @@ function coverageStatus() {
 function topRegionValue() {
   return kpis.value.top_region_state || '—'
 }
+
+function couponDetail() {
+  if (coupons.value.has_coupon_codes) {
+    return `${kpis.value.coupon_orders_count ?? 0} pedidos · ${formatPct(kpis.value.coupon_usage_percentage)}`
+  }
+
+  return `${kpis.value.uncoded_discount_orders_count ?? 0} descontos sem código`
+}
 </script>
 
 <template>
@@ -146,7 +154,7 @@ function topRegionValue() {
               :detail="`${dataQuality.complete_orders_count ?? 0} completos`"
             />
             <ExecutiveKpiCard
-              label="Ticket líquido"
+              label="Ticket médio"
               :value="formatMoney(kpis.average_ticket)"
               :delta-pct="kpis.average_ticket_vs_previous_pct"
               detail="Receita líquida / pedidos"
@@ -154,8 +162,8 @@ function topRegionValue() {
             <ExecutiveKpiCard
               label="Cupons"
               :value="formatMoney(kpis.coupon_discount_total)"
-              :detail="`${kpis.coupon_orders_count ?? 0} pedidos · ${formatPct(kpis.coupon_usage_percentage)}`"
-              tooltip="Valor de desconto associado a códigos de cupom capturados dos pedidos."
+              :detail="couponDetail()"
+              :tooltip="coupons.has_coupon_codes ? 'Valor de desconto associado a códigos de cupom capturados dos pedidos.' : 'Ainda não há códigos de cupom capturados; exibindo descontos de pedidos sem código.'"
             />
             <ExecutiveKpiCard
               label="Região líder"

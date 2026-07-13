@@ -13,6 +13,8 @@ const { toasts, dismiss } = useToast()
       :class="
         toast.type === 'error'
           ? 'border-red-200 bg-red-50 text-red-800'
+          : toast.type === 'info'
+            ? 'border-indigo-200 bg-indigo-50 text-indigo-800'
           : 'border-emerald-200 bg-emerald-50 text-emerald-800'
       "
     >

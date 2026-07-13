@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import CredentialForm from './CredentialForm.vue'
 import ChannelRoleConfig from './ChannelRoleConfig.vue'
@@ -28,6 +28,18 @@ const showForm = ref(false)
 const connecting = ref(false)
 const syncing = ref(false)
 const backfilling = ref(false)
+
+const ordersPollingRunning = computed(() => {
+  if (props.channel.channel !== 'yampi') return false
+  if (props.channel.orders_polling_running) return true
+
+  return Boolean(props.channel.recent_logs?.some((log) => {
+    if (log.action !== 'yampi_order_polling' || log.status !== 'pending' || log.finished_at) return false
+    const startedAt = new Date(log.started_at).getTime()
+    if (Number.isNaN(startedAt)) return true
+    return Date.now() - startedAt < 20 * 60 * 1000
+  }))
+})
 
 async function handleConnectSubmit(credentials) {
   connecting.value = true
@@ -59,6 +71,11 @@ async function handleSyncNow() {
 }
 
 async function handleBackfillOrders() {
+  if (ordersPollingRunning.value) {
+    toast.info('A sincronização de pedidos da Yampi já está em execução.')
+    return
+  }
+
   const confirmed = window.confirm(
     'Isso vai enfileirar a sincronização de pedidos da Yampi. Na primeira execução, serão buscados os últimos 30 dias. Continuar?',
   )
@@ -67,7 +84,9 @@ async function handleBackfillOrders() {
   backfilling.value = true
   try {
     const result = await props.onBackfillOrders(30)
-    if (result.enqueued) {
+    if (result.already_running) {
+      toast.info(result.message || 'A sincronização de pedidos da Yampi já está em execução.')
+    } else if (result.enqueued) {
       toast.success('Sincronização de pedidos enfileirada.')
     } else if (result.success) {
       toast.success('Sincronização de pedidos iniciada.')
@@ -83,13 +102,22 @@ async function handleBackfillOrders() {
 
 function logLabel(log) {
   if (log.action === 'yampi_order_polling') {
+    if (log.status === 'pending') return 'em andamento'
     if (log.status === 'success') {
       return `${log.created_count ?? 0} criados, ${log.updated_count ?? 0} atualizados, ${log.unchanged_count ?? 0} sem alteração`
     }
+    if (log.status === 'skipped') return log.error_message || 'ignorado'
     return log.error_message || `${log.error_count ?? 0} erro(s), ${log.ignored_count ?? 0} ignorado(s)`
   }
 
   return log.status === 'success' ? `${log.synced_count ?? 0} produtos` : log.error_message || 'erro'
+}
+
+function logClass(log) {
+  if (log.status === 'success') return 'text-emerald-600'
+  if (log.status === 'pending') return 'text-indigo-600'
+  if (log.status === 'skipped') return 'text-slate-500'
+  return 'text-red-600'
 }
 </script>
 
@@ -124,12 +152,12 @@ function logLabel(log) {
       <button
         v-if="channel.channel === 'yampi'"
         type="button"
-        :disabled="channel.status === 'pending' || backfilling"
-        title="Sincronização assíncrona de pedidos da Yampi"
+        :disabled="channel.status === 'pending' || backfilling || ordersPollingRunning"
+        :title="ordersPollingRunning ? 'A sincronização de pedidos já está em execução' : 'Sincronização assíncrona de pedidos da Yampi'"
         class="rounded-lg border border-dashed border-indigo-300 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
         @click="handleBackfillOrders"
       >
-        {{ backfilling ? 'Enfileirando...' : 'Sincronizar agora' }}
+        {{ ordersPollingRunning ? 'Sincronizando pedidos...' : backfilling ? 'Enfileirando...' : 'Sincronizar agora' }}
       </button>
     </div>
 
@@ -155,7 +183,7 @@ function logLabel(log) {
       <ul class="mt-2 space-y-1.5">
         <li v-for="log in channel.recent_logs" :key="log.id" class="flex items-center justify-between gap-2 text-xs">
           <span class="text-slate-500">{{ formatDateTime(log.started_at) }}</span>
-          <span class="truncate" :class="log.status === 'success' ? 'text-emerald-600' : 'text-red-600'">
+          <span class="truncate" :class="logClass(log)">
             {{ logLabel(log) }}
           </span>
         </li>
