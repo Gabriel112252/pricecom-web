@@ -30,8 +30,10 @@ const syncing = ref(false)
 const backfilling = ref(false)
 
 const isTikTok = computed(() => props.channel.channel === 'tiktok')
+const hasTikTokCredentials = computed(() => Boolean(props.channel.credentials_configured))
 const connectButtonLabel = computed(() => {
-  if (connecting.value && isTikTok.value) return 'Redirecionando...'
+  if (connecting.value && isTikTok.value && hasTikTokCredentials.value) return 'Redirecionando...'
+  if (isTikTok.value && !hasTikTokCredentials.value) return 'Cadastrar credenciais'
   if (props.channel.status === 'pending') return 'Conectar'
   return isTikTok.value ? 'Reconectar' : 'Editar credenciais'
 })
@@ -49,14 +51,14 @@ const ordersPollingRunning = computed(() => {
 })
 
 async function handleConnectClick() {
-  if (!isTikTok.value) {
+  if (!isTikTok.value || !hasTikTokCredentials.value) {
     showForm.value = !showForm.value
     return
   }
 
   connecting.value = true
   try {
-    await props.onConnect(props.channel.channel, {})
+    await props.onConnect(props.channel.channel, {}, { authorize: true })
   } catch (e) {
     toast.error(e.response?.data?.error || 'Não foi possível iniciar o OAuth do TikTok.')
   } finally {
@@ -68,7 +70,11 @@ async function handleConnectSubmit(credentials) {
   connecting.value = true
   try {
     await props.onConnect(props.channel.channel, credentials)
-    toast.success(`${CHANNEL_LABELS[props.channel.channel]} conectado com sucesso.`)
+    if (isTikTok.value) {
+      toast.success('Credenciais do TikTok salvas. Clique em Conectar para autorizar.')
+    } else {
+      toast.success(`${CHANNEL_LABELS[props.channel.channel]} conectado com sucesso.`)
+    }
     showForm.value = false
   } catch (e) {
     toast.error(e.response?.data?.errors?.[0] || 'Não foi possível conectar este canal.')
@@ -165,6 +171,15 @@ function logClass(log) {
         {{ connectButtonLabel }}
       </button>
       <button
+        v-if="isTikTok && hasTikTokCredentials"
+        type="button"
+        :disabled="connecting"
+        class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        @click="showForm = !showForm"
+      >
+        Editar credenciais
+      </button>
+      <button
         type="button"
         :disabled="channel.status === 'pending' || syncing"
         title="Conecte o canal antes de sincronizar"
@@ -186,7 +201,7 @@ function logClass(log) {
     </div>
 
     <CredentialForm
-      v-if="showForm && !isTikTok"
+      v-if="showForm"
       class="mt-4 border-t border-slate-100 pt-4"
       :channel="channel.channel"
       :required-fields="channel.required_fields"
