@@ -29,6 +29,13 @@ const connecting = ref(false)
 const syncing = ref(false)
 const backfilling = ref(false)
 
+const isTikTok = computed(() => props.channel.channel === 'tiktok')
+const connectButtonLabel = computed(() => {
+  if (connecting.value && isTikTok.value) return 'Redirecionando...'
+  if (props.channel.status === 'pending') return 'Conectar'
+  return isTikTok.value ? 'Reconectar' : 'Editar credenciais'
+})
+
 const ordersPollingRunning = computed(() => {
   if (props.channel.channel !== 'yampi') return false
   if (props.channel.orders_polling_running) return true
@@ -40,6 +47,22 @@ const ordersPollingRunning = computed(() => {
     return Date.now() - startedAt < 20 * 60 * 1000
   }))
 })
+
+async function handleConnectClick() {
+  if (!isTikTok.value) {
+    showForm.value = !showForm.value
+    return
+  }
+
+  connecting.value = true
+  try {
+    await props.onConnect(props.channel.channel, {})
+  } catch (e) {
+    toast.error(e.response?.data?.error || 'Não foi possível iniciar o OAuth do TikTok.')
+  } finally {
+    connecting.value = false
+  }
+}
 
 async function handleConnectSubmit(credentials) {
   connecting.value = true
@@ -135,10 +158,11 @@ function logClass(log) {
     <div class="mt-4 flex gap-2">
       <button
         type="button"
-        class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-        @click="showForm = !showForm"
+        :disabled="connecting"
+        class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        @click="handleConnectClick"
       >
-        {{ channel.status === 'pending' ? 'Conectar' : 'Editar credenciais' }}
+        {{ connectButtonLabel }}
       </button>
       <button
         type="button"
@@ -162,7 +186,7 @@ function logClass(log) {
     </div>
 
     <CredentialForm
-      v-if="showForm"
+      v-if="showForm && !isTikTok"
       class="mt-4 border-t border-slate-100 pt-4"
       :channel="channel.channel"
       :required-fields="channel.required_fields"

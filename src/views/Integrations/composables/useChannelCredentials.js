@@ -27,6 +27,14 @@ export function useChannelCredentials() {
 
   async function connect(channel, credentials) {
     try {
+      if (channel === 'tiktok') {
+        const { data } = await api.get('/integrations/tiktok/authorize_url')
+        if (!data.authorize_url) throw new Error('missing_tiktok_authorize_url')
+
+        window.location.href = data.authorize_url
+        return data
+      }
+
       const { data } = await api.post(`/integrations/${channel}/connect`, { credentials })
       applyChannelUpdate(data)
       return data
