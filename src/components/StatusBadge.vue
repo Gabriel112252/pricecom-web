@@ -31,6 +31,11 @@ const STATUS_MAP = {
   // Channel credential status
   pending: { label: 'Pendente', dot: 'bg-slate-400', classes: 'bg-slate-100 text-slate-600 ring-slate-500/20' },
   active: { label: 'Conectado', dot: 'bg-emerald-500', classes: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' },
+  // Pagar.me payable status
+  waiting_funds: { label: 'Previsto', dot: 'bg-blue-500', classes: 'bg-blue-50 text-blue-700 ring-blue-600/20' },
+  paid: { label: 'Já recebido', dot: 'bg-emerald-500', classes: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' },
+  canceled: { label: 'Cancelado', dot: 'bg-slate-400', classes: 'bg-slate-100 text-slate-600 ring-slate-500/20' },
+  suspended: { label: 'Suspenso', dot: 'bg-amber-500', classes: 'bg-amber-50 text-amber-700 ring-amber-600/20' },
   // Integration (idworks) / FinancialSource (Pagar.me) status
   connected: { label: 'Conectado', dot: 'bg-emerald-500', classes: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' },
   disconnected: { label: 'Pendente', dot: 'bg-slate-400', classes: 'bg-slate-100 text-slate-600 ring-slate-500/20' },

@@ -3,6 +3,7 @@
 export const DASHBOARD_TABS = [
   { key: 'overview', label: 'Visão Geral' },
   { key: 'sales', label: 'Vendas' },
+  { key: 'finance', label: 'Financeiro' },
   { key: 'products', label: 'Produtos' },
   { key: 'health', label: 'Saúde Operacional' },
 ]

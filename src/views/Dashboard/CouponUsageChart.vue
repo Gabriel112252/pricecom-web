@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { CATEGORICAL_COLORS, CHART_INK, CHART_TEXT_STYLE } from '@/lib/chartTheme'
-import { formatCompactMoney, formatMoney } from '@/lib/format'
+import { formatCompactMoney, formatMoney, formatPct } from '@/lib/format'
 
 const props = defineProps({
   coupons: { type: Object, default: () => ({}) },
@@ -12,7 +12,20 @@ const entries = computed(() =>
 )
 
 const displayDiscountTotal = computed(() => props.coupons.display_discount_total ?? props.coupons.total_discount ?? 0)
-const hasUncodedDiscounts = computed(() => Number(props.coupons.uncoded_discount_total || 0) > 0)
+const breakdownEntries = computed(() =>
+  (props.coupons.breakdown || []).filter((row) => Number(row.amount || 0) > 0 || Number(row.orders_count || 0) > 0),
+)
+const hasDiscountData = computed(() => Number(displayDiscountTotal.value || 0) > 0 || breakdownEntries.value.length > 0)
+
+function breakdownPercent(row) {
+  const total = Number(displayDiscountTotal.value || 0)
+  if (total <= 0) return 0
+  return Math.min(100, (Number(row.amount || 0) / total) * 100)
+}
+
+function breakdownColor(index) {
+  return CATEGORICAL_COLORS[(index + 1) % CATEGORICAL_COLORS.length]
+}
 
 const option = computed(() => ({
   textStyle: CHART_TEXT_STYLE,
@@ -68,23 +81,49 @@ const option = computed(() => ({
   <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h3 class="text-sm font-semibold text-slate-900">Cupons mais utilizados</h3>
-        <p class="mt-0.5 text-xs text-slate-400">Uso por código aplicado</p>
+        <h3 class="text-sm font-semibold text-slate-900">Composição dos descontos</h3>
+        <p class="mt-0.5 text-xs text-slate-400">Cupons, descontos comerciais e subsídio de frete</p>
       </div>
       <div class="text-right text-xs text-slate-500">
         <p class="font-semibold text-slate-900">{{ formatMoney(displayDiscountTotal) }}</p>
-        <p v-if="coupons.has_coupon_codes">{{ coupons.orders_count || 0 }} pedidos com cupom</p>
-        <p v-else>{{ coupons.uncoded_discount_orders_count || 0 }} descontos sem código</p>
+        <p>{{ coupons.display_orders_count || 0 }} pedidos impactados</p>
       </div>
     </div>
 
-    <div v-if="entries.length === 0" class="chart-frame mt-2 flex flex-col items-center justify-center text-center text-sm text-slate-400">
-      <p v-if="hasUncodedDiscounts" class="max-w-sm">
-        Existem {{ coupons.uncoded_discount_orders_count || 0 }} pedido(s) com desconto, mas nenhum código de cupom foi capturado nesses pedidos.
-      </p>
-      <p v-else>Nenhum cupom registrado no período.</p>
+    <div v-if="!hasDiscountData" class="chart-frame mt-2 flex items-center justify-center text-center text-sm text-slate-400">
+      Nenhum desconto registrado no período.
     </div>
-    <v-chart v-else class="mt-2 w-full" :style="{ height: `${Math.max(entries.length * 42, 220)}px` }" :option="option" autoresize />
+    <div v-else class="mt-5 space-y-4">
+      <div v-for="(row, index) in breakdownEntries" :key="row.key" class="space-y-1.5">
+        <div class="flex items-start justify-between gap-3 text-sm">
+          <div>
+            <p class="font-medium text-slate-900">{{ row.label }}</p>
+            <p class="mt-0.5 text-xs text-slate-400">{{ row.orders_count || 0 }} pedidos · {{ row.evidence }}</p>
+          </div>
+          <div class="text-right">
+            <p class="font-semibold text-slate-900">{{ formatMoney(row.amount) }}</p>
+            <p class="text-xs text-slate-400">{{ formatPct(breakdownPercent(row)) }}</p>
+          </div>
+        </div>
+        <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+          <div class="h-full rounded-full" :style="{ width: `${Math.max(breakdownPercent(row), 2)}%`, backgroundColor: breakdownColor(index) }" />
+        </div>
+      </div>
+
+      <div v-if="entries.length" class="border-t border-slate-100 pt-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Top cupons</h4>
+            <p class="mt-0.5 text-xs text-slate-400">Uso por código aplicado</p>
+          </div>
+          <p class="text-xs text-slate-500">{{ coupons.codes_count || 0 }} código(s)</p>
+        </div>
+        <v-chart class="mt-2 w-full" :style="{ height: `${Math.max(entries.length * 42, 180)}px` }" :option="option" autoresize />
+      </div>
+      <p v-else-if="Number(coupons.commercial_discount_total || 0) > 0" class="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+        Existem descontos comerciais no período, mas nenhum código de cupom foi capturado nos pedidos.
+      </p>
+    </div>
   </div>
 </template>
 

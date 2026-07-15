@@ -8,6 +8,7 @@ import ChannelFilter from './ChannelFilter.vue'
 import ExecutiveKpiCard from './ExecutiveKpiCard.vue'
 import RevenueOrdersChart from './RevenueOrdersChart.vue'
 import SalesByChannelChart from './SalesByChannelChart.vue'
+import FinancialReceivablesTab from './FinancialReceivablesTab.vue'
 import BrazilOrdersMap from './BrazilOrdersMap.vue'
 import CouponUsageChart from './CouponUsageChart.vue'
 import FinancialCompositionBlock from './FinancialCompositionBlock.vue'
@@ -90,11 +91,15 @@ function topRegionValue() {
 }
 
 function couponDetail() {
+  if (Number(kpis.value.shipping_subsidy_total || 0) > 0) {
+    return `${formatMoney(kpis.value.shipping_subsidy_total)} em frete · ${kpis.value.shipping_subsidy_orders_count ?? 0} pedidos`
+  }
+
   if (coupons.value.has_coupon_codes) {
     return `${kpis.value.coupon_orders_count ?? 0} pedidos · ${formatPct(kpis.value.coupon_usage_percentage)}`
   }
 
-  return `${kpis.value.uncoded_discount_orders_count ?? 0} descontos sem código`
+  return `${kpis.value.commercial_discount_orders_count ?? 0} descontos sem código`
 }
 </script>
 
@@ -160,10 +165,10 @@ function couponDetail() {
               detail="Receita líquida / pedidos"
             />
             <ExecutiveKpiCard
-              label="Cupons"
+              label="Descontos"
               :value="formatMoney(kpis.coupon_discount_total)"
               :detail="couponDetail()"
-              :tooltip="coupons.has_coupon_codes ? 'Valor de desconto associado a códigos de cupom capturados dos pedidos.' : 'Ainda não há códigos de cupom capturados; exibindo descontos de pedidos sem código.'"
+              tooltip="Soma de cupons identificados, descontos comerciais sem código e subsídio de frete estimado quando há frete real."
             />
             <ExecutiveKpiCard
               label="Região líder"
@@ -198,6 +203,9 @@ function couponDetail() {
           <ChannelBreakdown :by-channel="summary.revenue.by_channel" />
           <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" />
         </section>
+
+        <!-- Financeiro -->
+        <FinancialReceivablesTab v-show="activeTab === 'finance'" />
 
         <!-- Produtos -->
         <section v-show="activeTab === 'products'" class="grid grid-cols-1 gap-5 lg:grid-cols-2">
