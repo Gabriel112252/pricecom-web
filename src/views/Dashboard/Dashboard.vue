@@ -12,6 +12,8 @@ import FinancialReceivablesTab from './FinancialReceivablesTab.vue'
 import BrazilOrdersMap from './BrazilOrdersMap.vue'
 import CouponUsageChart from './CouponUsageChart.vue'
 import CartAbandonmentCard from './CartAbandonmentCard.vue'
+import FreightMarginCard from './FreightMarginCard.vue'
+import FreightOrdersTable from './FreightOrdersTable.vue'
 import FinancialCompositionBlock from './FinancialCompositionBlock.vue'
 import DataQualityBlock from './DataQualityBlock.vue'
 import OrderVolumeChart from './OrderVolumeChart.vue'
@@ -80,6 +82,7 @@ const salesByChannel = computed(() => summary.value?.sales_by_channel ?? [])
 const regionalSales = computed(() => summary.value?.regional_sales ?? {})
 const coupons = computed(() => summary.value?.coupons ?? {})
 const cartAbandonment = computed(() => summary.value?.cart_abandonment ?? {})
+const freightMargin = computed(() => summary.value?.freight_margin ?? {})
 
 function coverageStatus() {
   const coverage = Number(kpis.value.financial_coverage_percentage ?? 100)
@@ -205,6 +208,8 @@ function couponDetail() {
           <ChannelBreakdown :by-channel="summary.revenue.by_channel" />
           <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" />
           <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
+          <FreightMarginCard :freight-margin="freightMargin" />
+          <FreightOrdersTable class="lg:col-span-2" :from="from" :to="to" :channel-ids="channelIds" />
         </section>
 
         <!-- Financeiro -->
