@@ -15,6 +15,20 @@ const totalCount = computed(() => Number(props.cartAbandonment.total_count || 0)
 const recovered = computed(() => props.cartAbandonment.recovered || {})
 const stillAbandoned = computed(() => props.cartAbandonment.still_abandoned || {})
 
+// "tiktok_unpaid" quando o filtro de canal do dashboard está em TikTok
+// Shop: a fonte vira pedido UNPAID (proxy — TikTok não expõe carrinho
+// pré-checkout), então subtítulo e rótulos falam de pedidos, não carrinhos.
+const tiktokMode = computed(() => props.cartAbandonment.mode === 'tiktok_unpaid')
+const subtitle = computed(() =>
+  tiktokMode.value
+    ? 'Pedidos não pagos · TikTok não disponibiliza carrinho pré-checkout'
+    : 'Checkout Yampi · carrinhos no período',
+)
+const unitLabel = computed(() => (tiktokMode.value ? 'pedidos' : 'carrinhos'))
+const stillAbandonedLabel = computed(() =>
+  tiktokMode.value ? 'pedidos ainda não pagos' : 'carrinhos ainda abandonados',
+)
+
 const compositionEntries = computed(() =>
   (props.cartAbandonment.discount_composition || []).filter((row) => Number(row.amount || 0) > 0),
 )
@@ -100,11 +114,11 @@ function productPercent(row) {
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h3 class="text-sm font-semibold text-slate-900">Carrinho abandonado</h3>
-        <p class="mt-0.5 text-xs text-slate-400">Checkout Yampi · carrinhos no período</p>
+        <p class="mt-0.5 text-xs text-slate-400">{{ subtitle }}</p>
       </div>
       <div class="text-right text-xs text-slate-500">
         <p class="font-semibold text-slate-900">{{ formatMoney(stillAbandoned.value) }}</p>
-        <p>{{ stillAbandoned.count || 0 }} carrinhos ainda abandonados</p>
+        <p>{{ stillAbandoned.count || 0 }} {{ stillAbandonedLabel }}</p>
       </div>
     </div>
 
@@ -112,7 +126,7 @@ function productPercent(row) {
       Dados de carrinho abandonado ainda não disponíveis para este ambiente.
     </div>
     <div v-else-if="totalCount === 0" class="empty-frame mt-4 flex items-center justify-center text-center text-sm text-slate-400">
-      Nenhum carrinho registrado no período.
+      {{ tiktokMode ? 'Nenhum pedido não pago no período.' : 'Nenhum carrinho registrado no período.' }}
     </div>
     <template v-else>
       <div class="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -122,7 +136,7 @@ function productPercent(row) {
           <p class="mt-0.5 text-xs text-emerald-700">{{ formatMoney(recovered.value) }}</p>
         </div>
         <div class="rounded-lg bg-slate-50 p-3">
-          <p class="text-xs text-slate-500">Ainda abandonados</p>
+          <p class="text-xs text-slate-500">{{ tiktokMode ? 'Ainda não pagos' : 'Ainda abandonados' }}</p>
           <p class="mt-1 text-lg font-semibold text-slate-900">{{ stillAbandoned.count || 0 }}</p>
           <p class="mt-0.5 text-xs text-slate-400">{{ formatMoney(stillAbandoned.value) }}</p>
         </div>
@@ -134,7 +148,7 @@ function productPercent(row) {
         <div class="rounded-lg bg-slate-50 p-3">
           <p class="text-xs text-slate-500">Ticket médio abandonado</p>
           <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatMoney(cartAbandonment.abandoned_avg_ticket) }}</p>
-          <p class="mt-0.5 text-xs text-slate-400">média de Cart.total</p>
+          <p class="mt-0.5 text-xs text-slate-400">{{ tiktokMode ? 'média do valor do pedido' : 'média de Cart.total' }}</p>
         </div>
       </div>
 
@@ -172,7 +186,9 @@ function productPercent(row) {
 
       <div v-if="topProducts.length" class="mt-5 border-t border-slate-100 pt-4">
         <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Top produtos abandonados</h4>
-        <p class="mt-0.5 text-xs text-slate-400">Produtos mais presentes nos carrinhos ainda abandonados</p>
+        <p class="mt-0.5 text-xs text-slate-400">
+          {{ tiktokMode ? 'Produtos mais presentes nos pedidos ainda não pagos' : 'Produtos mais presentes nos carrinhos ainda abandonados' }}
+        </p>
         <div class="mt-3 space-y-3">
           <div v-for="row in topProducts" :key="row.sku || row.name" class="space-y-1.5">
             <div class="flex items-start justify-between gap-3 text-sm">
@@ -180,7 +196,7 @@ function productPercent(row) {
                 <p class="truncate font-medium text-slate-900" :title="row.name">{{ row.name }}</p>
                 <p class="mt-0.5 text-xs text-slate-400"><template v-if="row.sku">{{ row.sku }} · </template>{{ row.total_qty || 0 }} unidade(s)</p>
               </div>
-              <p class="shrink-0 font-semibold text-slate-900">{{ row.carts_count || 0 }} carrinhos</p>
+              <p class="shrink-0 font-semibold text-slate-900">{{ row.carts_count || 0 }} {{ unitLabel }}</p>
             </div>
             <div class="h-2 overflow-hidden rounded-full bg-slate-100">
               <div

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import api from '@/lib/api'
 import { formatMoney, formatPct } from '@/lib/format'
 import { DASHBOARD_TABS } from './lib/tabs'
@@ -91,6 +91,49 @@ function coverageStatus() {
   return 'default'
 }
 
+// Selo de transparência: os KPIs excluem pedidos unpaid/status_unknown
+// (Order::NON_REVENUE_STATUSES no backend); quando existem no período+filtro,
+// os cards afetados dizem quantos e quanto ficou de fora.
+const excludedCount = computed(() => Number(kpis.value.non_revenue_excluded_count || 0))
+const excludedNote = computed(() => {
+  if (excludedCount.value === 0) return ''
+  const plural = excludedCount.value === 1 ? 'pedido não pago/indeterminado' : 'pedidos não pagos/indeterminados'
+  return `Exclui ${excludedCount.value} ${plural} (${formatMoney(kpis.value.non_revenue_excluded_amount)}).`
+})
+
+// "Cobertura financeira" mede completude de DADOS (custo, frete real e
+// imposto conforme as fontes configuradas), não pagamento. Quando crítica,
+// o card explica em texto em vez de só a bolinha vermelha.
+const coverageTooltip =
+  'Percentual dos pedidos válidos do período com dados financeiros completos: custo dos itens, ' +
+  'frete real e impostos, conforme as fontes configuradas em Integrações. Não mede pagamento — ' +
+  'pedidos não pagos já ficam fora de todas as métricas.'
+const coverageNote = computed(() => {
+  const total = Number(dataQuality.value.complete_orders_count ?? 0) + Number(dataQuality.value.incomplete_orders_count ?? 0)
+  if (total === 0 || coverageStatus() !== 'critical') return ''
+  if (Number(dataQuality.value.complete_orders_count ?? 0) === 0) {
+    return 'Nenhum pedido do período com custo, frete e imposto completos.'
+  }
+  return 'Maioria dos pedidos sem custo, frete ou imposto completos.'
+})
+
+// "Ver detalhes" dos selos: rola até o gadget de carrinho abandonado /
+// pedidos não pagos (aba Vendas), a fonte canônica do detalhe dos excluídos.
+const cartAbandonmentAnchor = ref(null)
+async function goToUnpaidGadget() {
+  activeTab.value = 'sales'
+  await nextTick()
+  cartAbandonmentAnchor.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+// Detalhe da cobertura vive no bloco de qualidade de dados (aba Saúde).
+const dataQualityAnchor = ref(null)
+async function goToDataQuality() {
+  activeTab.value = 'health'
+  await nextTick()
+  dataQualityAnchor.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 function topRegionValue() {
   return kpis.value.top_region_state || '—'
 }
@@ -155,19 +198,28 @@ function couponDetail() {
               :value="formatMoney(kpis.net_revenue)"
               :delta-pct="kpis.net_revenue_vs_previous_pct"
               :detail="`Bruta ${formatMoney(kpis.gross_revenue)}`"
-              tooltip="Receita bruta menos descontos e reembolsos."
+              tooltip="Receita bruta menos descontos e reembolsos. Pedidos não pagos/indeterminados ficam fora."
+              :note="excludedNote"
+              :note-action-label="excludedNote ? 'ver detalhes' : ''"
+              @note-action="goToUnpaidGadget"
             />
             <ExecutiveKpiCard
               label="Pedidos"
               :value="String(kpis.orders_count ?? 0)"
               :delta-pct="kpis.orders_vs_previous_pct"
               :detail="`${dataQuality.complete_orders_count ?? 0} completos`"
+              :note="excludedNote"
+              :note-action-label="excludedNote ? 'ver detalhes' : ''"
+              @note-action="goToUnpaidGadget"
             />
             <ExecutiveKpiCard
               label="Ticket médio"
               :value="formatMoney(kpis.average_ticket)"
               :delta-pct="kpis.average_ticket_vs_previous_pct"
               detail="Receita líquida / pedidos"
+              :note="excludedNote"
+              :note-action-label="excludedNote ? 'ver detalhes' : ''"
+              @note-action="goToUnpaidGadget"
             />
             <ExecutiveKpiCard
               label="Descontos"
@@ -185,8 +237,12 @@ function couponDetail() {
               label="Cobertura financeira"
               :value="formatPct(kpis.financial_coverage_percentage)"
               :status="coverageStatus()"
-              :detail="`${dataQuality.incomplete_orders_count ?? 0} incompletos`"
-              tooltip="Percentual de pedidos com custo, frete e impostos exigidos pela fonte configurada."
+              :detail="`${dataQuality.incomplete_orders_count ?? 0} pedidos com dados incompletos`"
+              :tooltip="coverageTooltip"
+              :note="coverageNote"
+              note-tone="critical"
+              :note-action-label="coverageNote ? 'ver detalhes' : ''"
+              @note-action="goToDataQuality"
             />
           </div>
 
@@ -207,7 +263,9 @@ function couponDetail() {
           <RevenueByHourChart :by-channel-series="summary.revenue.by_channel_series" :granularity="granularity" />
           <ChannelBreakdown :by-channel="summary.revenue.by_channel" />
           <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" />
-          <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
+          <div ref="cartAbandonmentAnchor" class="scroll-mt-6">
+            <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
+          </div>
           <FreightMarginCard :freight-margin="freightMargin" />
           <FreightOrdersTable class="lg:col-span-2" :from="from" :to="to" :channel-ids="channelIds" />
         </section>
@@ -238,7 +296,9 @@ function couponDetail() {
             />
           </div>
           <FinancialCompositionBlock :composition="financialComposition" />
-          <DataQualityBlock :quality="dataQuality" />
+          <div ref="dataQualityAnchor" class="scroll-mt-6">
+            <DataQualityBlock :quality="dataQuality" />
+          </div>
         </section>
       </div>
     </template>

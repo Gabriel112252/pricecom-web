@@ -6,7 +6,15 @@ defineProps({
   detail: { type: String, default: '' },
   status: { type: String, default: 'default' },
   tooltip: { type: String, default: '' },
+  // Nota discreta abaixo do detail (ex: "Exclui N pedidos não pagos...").
+  // Vazia = não renderiza nada. noteActionLabel adiciona um link no fim da
+  // nota que emite 'note-action' (ex: navegar até o gadget com o detalhe).
+  note: { type: String, default: '' },
+  noteActionLabel: { type: String, default: '' },
+  noteTone: { type: String, default: 'warning' }, // 'warning' | 'critical'
 })
+
+const emit = defineEmits(['note-action'])
 
 function deltaLabel(pct) {
   if (pct === null || pct === undefined) return 'sem comparação'
@@ -39,5 +47,20 @@ function deltaTone(pct) {
       <span class="truncate text-slate-500">{{ detail }}</span>
       <span class="shrink-0 font-medium" :class="deltaTone(deltaPct)">{{ deltaLabel(deltaPct) }}</span>
     </div>
+    <p
+      v-if="note"
+      class="mt-1.5 text-[11px] leading-snug"
+      :class="noteTone === 'critical' ? 'text-red-600' : 'text-amber-700'"
+    >
+      {{ note }}
+      <button
+        v-if="noteActionLabel"
+        type="button"
+        class="font-medium underline underline-offset-2 hover:opacity-75"
+        @click="emit('note-action')"
+      >
+        {{ noteActionLabel }}
+      </button>
+    </p>
   </div>
 </template>
