@@ -11,6 +11,7 @@ import SalesByChannelChart from './SalesByChannelChart.vue'
 import FinancialReceivablesTab from './FinancialReceivablesTab.vue'
 import BrazilOrdersMap from './BrazilOrdersMap.vue'
 import CouponUsageChart from './CouponUsageChart.vue'
+import CartAbandonmentCard from './CartAbandonmentCard.vue'
 import FinancialCompositionBlock from './FinancialCompositionBlock.vue'
 import DataQualityBlock from './DataQualityBlock.vue'
 import OrderVolumeChart from './OrderVolumeChart.vue'
@@ -78,6 +79,7 @@ const revenueTimeline = computed(() => summary.value?.revenue_timeline ?? summar
 const salesByChannel = computed(() => summary.value?.sales_by_channel ?? [])
 const regionalSales = computed(() => summary.value?.regional_sales ?? {})
 const coupons = computed(() => summary.value?.coupons ?? {})
+const cartAbandonment = computed(() => summary.value?.cart_abandonment ?? {})
 
 function coverageStatus() {
   const coverage = Number(kpis.value.financial_coverage_percentage ?? 100)
@@ -193,6 +195,10 @@ function couponDetail() {
           <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <BrazilOrdersMap :regional-sales="regionalSales" />
             <CouponUsageChart :coupons="coupons" />
+          </div>
+
+          <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
           </div>
         </section>
 

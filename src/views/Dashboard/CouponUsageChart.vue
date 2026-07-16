@@ -17,6 +17,18 @@ const breakdownEntries = computed(() =>
 )
 const hasDiscountData = computed(() => Number(displayDiscountTotal.value || 0) > 0 || breakdownEntries.value.length > 0)
 
+const productEntries = computed(() =>
+  (props.coupons.by_product || []).filter((row) => Number(row.discount_total || 0) > 0),
+)
+const productDiscountTotal = computed(() =>
+  productEntries.value.reduce((sum, row) => sum + Number(row.discount_total || 0), 0),
+)
+
+function productPercent(row) {
+  if (productDiscountTotal.value <= 0) return 0
+  return Math.min(100, (Number(row.discount_total || 0) / productDiscountTotal.value) * 100)
+}
+
 function breakdownPercent(row) {
   const total = Number(displayDiscountTotal.value || 0)
   if (total <= 0) return 0
@@ -113,7 +125,7 @@ const option = computed(() => ({
       <div v-if="entries.length" class="border-t border-slate-100 pt-4">
         <div class="flex items-center justify-between">
           <div>
-            <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Top cupons</h4>
+            <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Por cupom</h4>
             <p class="mt-0.5 text-xs text-slate-400">Uso por código aplicado</p>
           </div>
           <p class="text-xs text-slate-500">{{ coupons.codes_count || 0 }} código(s)</p>
@@ -123,6 +135,33 @@ const option = computed(() => ({
       <p v-else-if="Number(coupons.commercial_discount_total || 0) > 0" class="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
         Existem descontos comerciais no período, mas nenhum código de cupom foi capturado nos pedidos.
       </p>
+
+      <div v-if="productEntries.length" class="border-t border-slate-100 pt-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Por produto</h4>
+            <p class="mt-0.5 text-xs text-slate-400">Descontos atribuídos aos itens do pedido</p>
+          </div>
+          <p class="text-xs text-slate-500">{{ formatMoney(productDiscountTotal) }}</p>
+        </div>
+        <div class="mt-3 space-y-3">
+          <div v-for="(row, index) in productEntries" :key="row.sku || row.name" class="space-y-1.5">
+            <div class="flex items-start justify-between gap-3 text-sm">
+              <div class="min-w-0">
+                <p class="truncate font-medium text-slate-900" :title="row.name">{{ row.name }}</p>
+                <p class="mt-0.5 text-xs text-slate-400">{{ row.orders_count || 0 }} pedidos<template v-if="row.sku"> · {{ row.sku }}</template></p>
+              </div>
+              <div class="shrink-0 text-right">
+                <p class="font-semibold text-slate-900">{{ formatMoney(row.discount_total) }}</p>
+                <p class="text-xs text-slate-400">{{ formatPct(productPercent(row)) }}</p>
+              </div>
+            </div>
+            <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div class="h-full rounded-full" :style="{ width: `${Math.max(productPercent(row), 2)}%`, backgroundColor: breakdownColor(index) }" />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
