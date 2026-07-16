@@ -196,10 +196,6 @@ function couponDetail() {
             <BrazilOrdersMap :regional-sales="regionalSales" />
             <CouponUsageChart :coupons="coupons" />
           </div>
-
-          <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
-          </div>
         </section>
 
         <!-- Vendas -->
@@ -208,6 +204,7 @@ function couponDetail() {
           <RevenueByHourChart :by-channel-series="summary.revenue.by_channel_series" :granularity="granularity" />
           <ChannelBreakdown :by-channel="summary.revenue.by_channel" />
           <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" />
+          <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
         </section>
 
         <!-- Financeiro -->

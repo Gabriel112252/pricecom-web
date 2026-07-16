@@ -9,6 +9,8 @@ const props = defineProps({
 
 const available = computed(() => props.cartAbandonment.available === true)
 const totalCount = computed(() => Number(props.cartAbandonment.total_count || 0))
+const recovered = computed(() => props.cartAbandonment.recovered || {})
+const stillAbandoned = computed(() => props.cartAbandonment.still_abandoned || {})
 
 const compositionEntries = computed(() =>
   (props.cartAbandonment.discount_composition || []).filter((row) => Number(row.amount || 0) > 0),
@@ -35,8 +37,8 @@ function compositionColor(index) {
         <p class="mt-0.5 text-xs text-slate-400">Checkout Yampi · carrinhos no período</p>
       </div>
       <div class="text-right text-xs text-slate-500">
-        <p class="font-semibold text-slate-900">{{ formatMoney(cartAbandonment.abandoned_value) }}</p>
-        <p>{{ cartAbandonment.abandoned_count || 0 }} carrinhos abandonados</p>
+        <p class="font-semibold text-slate-900">{{ formatMoney(stillAbandoned.value) }}</p>
+        <p>{{ stillAbandoned.count || 0 }} carrinhos ainda abandonados</p>
       </div>
     </div>
 
@@ -48,18 +50,20 @@ function compositionColor(index) {
     </div>
     <template v-else>
       <div class="mt-5 grid grid-cols-3 gap-3">
-        <div class="rounded-lg bg-slate-50 p-3">
-          <p class="text-xs text-slate-500">Abandonados</p>
-          <p class="mt-1 text-lg font-semibold text-slate-900">{{ cartAbandonment.abandoned_count || 0 }}</p>
+        <div class="rounded-lg bg-emerald-50 p-3">
+          <p class="text-xs text-emerald-700">Recuperados</p>
+          <p class="mt-1 text-lg font-semibold text-emerald-900">{{ recovered.count || 0 }}</p>
+          <p class="mt-0.5 text-xs text-emerald-700">{{ formatMoney(recovered.value) }}</p>
         </div>
         <div class="rounded-lg bg-slate-50 p-3">
-          <p class="text-xs text-slate-500">Valor abandonado</p>
-          <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatMoney(cartAbandonment.abandoned_value) }}</p>
+          <p class="text-xs text-slate-500">Ainda abandonados</p>
+          <p class="mt-1 text-lg font-semibold text-slate-900">{{ stillAbandoned.count || 0 }}</p>
+          <p class="mt-0.5 text-xs text-slate-400">{{ formatMoney(stillAbandoned.value) }}</p>
         </div>
         <div class="rounded-lg bg-slate-50 p-3">
           <p class="text-xs text-slate-500">Taxa de conversão</p>
           <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatPct(cartAbandonment.conversion_rate_pct) }}</p>
-          <p class="mt-0.5 text-xs text-slate-400">{{ cartAbandonment.converted_count || 0 }} de {{ totalCount }} convertidos</p>
+          <p class="mt-0.5 text-xs text-slate-400">{{ recovered.count || 0 }} de {{ totalCount }} convertidos</p>
         </div>
       </div>
 
