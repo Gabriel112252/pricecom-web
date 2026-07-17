@@ -39,8 +39,19 @@ const categoryEntries = computed(() => {
 const barSegments = computed(() => categoryEntries.value.filter((row) => row.amount > 0))
 const hasDiscountData = computed(() => totalDiscount.value > 0 || barSegments.value.length > 0)
 
-const productEntries = computed(() =>
-  (props.coupons.by_product || []).filter((row) => Number(row.discount_total || 0) > 0),
+// Blocos por plataforma (discount_breakdown_yampi/tiktok). `available`
+// segue o filtro de canal do dashboard: com filtro só-TikTok o painel Yampi
+// sai do fluxo (v-if) em vez de sobrar coluna vazia — e vice-versa.
+const yampiBlock = computed(() => props.coupons.discount_breakdown_yampi || {})
+const tiktokBlock = computed(() => props.coupons.discount_breakdown_tiktok || {})
+const showYampi = computed(() => yampiBlock.value.available === true)
+const showTiktok = computed(() => tiktokBlock.value.available === true)
+
+// Top cupons Yampi já vêm do backend ordenados por valor de desconto desc e
+// limitados a 10 (build_coupons). O tipo do cupom (percentual vs fixo) não
+// existe no payload de promocode mapeado da Yampi, por isso não há coluna.
+const yampiTopCoupons = computed(() =>
+  (yampiBlock.value.top_coupons || []).filter((row) => Number(row.discount_total || 0) > 0),
 )
 </script>
 
@@ -82,26 +93,53 @@ const productEntries = computed(() =>
         </div>
       </div>
 
-      <!-- Ranking por produto: nome, desconto R$, % sobre o preço do item -->
-      <div v-if="productEntries.length" class="border-t border-slate-100 pt-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Por produto</h4>
-            <p class="mt-0.5 text-xs text-slate-400">Descontos atribuídos aos itens do pedido</p>
+      <!-- Cards por canal: cupons identificados (Yampi) e desconto agregado
+           (TikTok). Só os canais cobertos pelo filtro entram no fluxo. -->
+      <div v-if="showYampi || showTiktok" class="border-t border-slate-100 pt-4">
+        <div class="grid grid-cols-1 gap-4" :class="{ 'sm:grid-cols-2': showYampi && showTiktok }">
+          <div v-if="showYampi" class="rounded-lg border border-slate-100 p-3">
+            <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cupons Yampi</h4>
+            <p class="mt-0.5 text-xs text-slate-400">Ordenados pelo valor total de desconto no período</p>
+            <div v-if="yampiTopCoupons.length" class="mt-3 max-h-[280px] overflow-y-auto pr-1">
+              <table class="w-full text-sm">
+                <thead class="sticky top-0 bg-white">
+                  <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <th class="pb-2 pr-3 font-semibold">Cupom</th>
+                    <th class="pb-2 pr-3 text-right font-semibold">Pedidos</th>
+                    <th class="pb-2 text-right font-semibold">Desconto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in yampiTopCoupons" :key="row.code" class="border-t border-slate-100">
+                    <td class="max-w-0 py-2 pr-3">
+                      <p class="truncate font-medium text-slate-900" :title="row.code">{{ row.code }}</p>
+                    </td>
+                    <td class="py-2 pr-3 text-right align-top tabular-nums text-slate-600">{{ row.orders_count }}</td>
+                    <td class="py-2 text-right align-top font-semibold tabular-nums text-slate-900">
+                      {{ formatMoney(row.discount_total) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else class="mt-3 flex h-16 items-center justify-center text-sm text-slate-400">
+              Nenhum cupom no período.
+            </div>
+          </div>
+
+          <div v-if="showTiktok" class="rounded-lg border border-slate-100 p-3">
+            <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Descontos TikTok</h4>
+            <p class="mt-1 text-2xl font-bold leading-tight tabular-nums text-slate-900">
+              {{ formatMoney(tiktokBlock.discount_total) }}
+            </p>
+            <p class="mt-0.5 text-xs tabular-nums text-slate-500">
+              {{ tiktokBlock.orders_count ?? 0 }} pedidos com desconto
+            </p>
+            <p class="mt-2 text-[11px] leading-snug text-slate-400">
+              TikTok não distingue tipo de desconto na API — total agregado de seller + platform discount.
+            </p>
           </div>
         </div>
-        <ol class="mt-3 space-y-2.5">
-          <li v-for="row in productEntries" :key="row.sku || row.name" class="flex items-baseline justify-between gap-3 text-sm">
-            <div class="min-w-0">
-              <p class="truncate font-medium text-slate-900" :title="row.name">{{ row.name }}</p>
-              <p v-if="row.sku" class="mt-0.5 text-xs text-slate-400">{{ row.sku }}</p>
-            </div>
-            <div class="shrink-0 text-right">
-              <p class="font-semibold tabular-nums text-slate-900">{{ formatMoney(row.discount_total) }}</p>
-              <p class="text-xs tabular-nums text-slate-400">{{ formatPct(row.discount_pct) }} do preço</p>
-            </div>
-          </li>
-        </ol>
       </div>
     </div>
   </div>
