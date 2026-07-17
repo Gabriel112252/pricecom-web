@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { formatMoney } from '@/lib/format'
 
 // Card de receita da Visão Geral: bruta → deduções → líquida em destaque.
@@ -14,6 +15,12 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['note-action'])
+
+// tax_amount está zerado em produção (sem fonte de imposto configurada);
+// o rótulo só menciona imposto quando ele de fato compõe o valor.
+const freightLabel = computed(() =>
+  Number(props.breakdown.taxes || 0) > 0 ? '(−) Frete e imposto' : '(−) Frete',
+)
 
 function deltaLabel(pct) {
   if (pct === null || pct === undefined) return ''
@@ -44,31 +51,33 @@ function deltaTone(pct) {
         <dd class="tabular-nums text-slate-500">{{ formatMoney(breakdown.cancellations_and_refunds) }}</dd>
       </div>
       <div class="flex items-baseline justify-between gap-2">
-        <dt class="text-slate-400">(−) Frete e imposto</dt>
+        <dt class="text-slate-400">{{ freightLabel }}</dt>
         <dd class="tabular-nums text-slate-500">{{ formatMoney(breakdown.freight_and_taxes) }}</dd>
       </div>
     </dl>
 
-    <div class="mt-2 flex items-baseline justify-between gap-2 border-t border-slate-200 pt-2">
+    <div class="mt-2 border-t border-slate-200 pt-2">
       <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Receita líquida</p>
-      <span
-        v-if="deltaLabel(breakdown.net_vs_previous_pct)"
-        class="shrink-0 text-xs font-medium"
-        :class="deltaTone(breakdown.net_vs_previous_pct)"
-      >
-        {{ deltaLabel(breakdown.net_vs_previous_pct) }}
-      </span>
+      <div class="mt-1 flex items-baseline justify-between gap-2">
+        <p class="text-2xl font-bold leading-tight tabular-nums text-slate-900">
+          {{ formatMoney(breakdown.net_revenue) }}
+        </p>
+        <span
+          v-if="deltaLabel(breakdown.net_vs_previous_pct)"
+          class="shrink-0 text-xs font-medium"
+          :class="deltaTone(breakdown.net_vs_previous_pct)"
+        >
+          {{ deltaLabel(breakdown.net_vs_previous_pct) }}
+        </span>
+      </div>
     </div>
-    <p class="mt-1 text-2xl font-bold leading-tight tabular-nums text-slate-900">
-      {{ formatMoney(breakdown.net_revenue) }}
-    </p>
 
-    <p v-if="note" class="mt-1.5 text-[11px] leading-snug text-amber-700">
+    <p v-if="note" class="mt-1.5 text-[11px] leading-snug text-slate-500">
       {{ note }}
       <button
         v-if="noteActionLabel"
         type="button"
-        class="font-medium underline underline-offset-2 hover:opacity-75"
+        class="font-medium text-slate-600 underline underline-offset-2 hover:opacity-75"
         @click="emit('note-action')"
       >
         {{ noteActionLabel }}

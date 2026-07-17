@@ -12,6 +12,7 @@ import SalesByChannelChart from './SalesByChannelChart.vue'
 import FinancialReceivablesTab from './FinancialReceivablesTab.vue'
 import BrazilOrdersMap from './BrazilOrdersMap.vue'
 import DiscountCompositionCard from './DiscountCompositionCard.vue'
+import DiscountTicketExposureCard from './DiscountTicketExposureCard.vue'
 import CartAbandonmentCard from './CartAbandonmentCard.vue'
 import FreightMarginCard from './FreightMarginCard.vue'
 import FreightOrdersTable from './FreightOrdersTable.vue'
@@ -141,7 +142,9 @@ function couponDetail() {
     </div>
 
     <template v-else-if="summary">
-      <div class="border-b border-slate-200">
+      <!-- isolate + overflow-hidden: o underline indigo da tab ativa fica
+           contido na própria barra, sem pintar sobre os cards abaixo -->
+      <div class="relative isolate overflow-hidden border-b border-slate-200">
         <nav class="flex gap-1">
           <button
             v-for="tab in DASHBOARD_TABS"
@@ -209,9 +212,16 @@ function couponDetail() {
             <SalesByChannelChart :channels="salesByChannel" />
           </div>
 
-          <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <!-- items-start: cada card com altura do próprio conteúdo — sem o
+               stretch implícito, o mapa não estica pra acompanhar a lista de
+               produtos do card de descontos -->
+          <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
             <BrazilOrdersMap :regional-sales="regionalSales" />
             <DiscountCompositionCard :coupons="coupons" :gross-revenue="Number(revenueBreakdown.gross_revenue || 0)" />
+            <DiscountTicketExposureCard
+              :summary="summary.discount_ticket_summary || {}"
+              :products="summary.product_discount_exposure || []"
+            />
           </div>
         </section>
 

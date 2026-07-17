@@ -11,7 +11,9 @@ defineProps({
   // nota que emite 'note-action' (ex: navegar até o gadget com o detalhe).
   note: { type: String, default: '' },
   noteActionLabel: { type: String, default: '' },
-  noteTone: { type: String, default: 'warning' }, // 'warning' | 'critical'
+  // 'neutral' (informativo, padrão) | 'warning' | 'critical'. Vermelho só
+  // para alerta acionável real — nota informativa fica em texto secundário.
+  noteTone: { type: String, default: 'neutral' },
 })
 
 const emit = defineEmits(['note-action'])
@@ -52,13 +54,14 @@ function deltaTone(pct) {
     <p
       v-if="note"
       class="mt-1.5 text-[11px] leading-snug"
-      :class="noteTone === 'critical' ? 'text-red-600' : 'text-amber-700'"
+      :class="noteTone === 'critical' ? 'text-red-600' : noteTone === 'warning' ? 'text-amber-700' : 'text-slate-500'"
     >
       {{ note }}
       <button
         v-if="noteActionLabel"
         type="button"
         class="font-medium underline underline-offset-2 hover:opacity-75"
+        :class="noteTone === 'critical' ? 'text-red-700' : noteTone === 'warning' ? 'text-amber-800' : 'text-slate-600'"
         @click="emit('note-action')"
       >
         {{ noteActionLabel }}
