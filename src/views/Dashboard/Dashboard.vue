@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/lib/api'
 import { formatMoney, formatPct } from '@/lib/format'
 import { DASHBOARD_TABS } from './lib/tabs'
@@ -87,32 +87,13 @@ const coupons = computed(() => summary.value?.coupons ?? {})
 const cartAbandonment = computed(() => summary.value?.cart_abandonment ?? {})
 const freightMargin = computed(() => summary.value?.freight_margin ?? {})
 
-// Selo de transparência: os KPIs excluem pedidos unpaid/status_unknown
-// (Order::NON_REVENUE_STATUSES no backend); quando existem no período+filtro,
-// os cards afetados dizem quantos e quanto ficou de fora.
-const excludedCount = computed(() => Number(kpis.value.non_revenue_excluded_count || 0))
-const excludedNote = computed(() => {
-  if (excludedCount.value === 0) return ''
-  const plural = excludedCount.value === 1 ? 'pedido não pago/indeterminado' : 'pedidos não pagos/indeterminados'
-  return `Exclui ${excludedCount.value} ${plural} (${formatMoney(kpis.value.non_revenue_excluded_amount)}).`
-})
-
-// "Ver detalhes" dos selos: rola até o gadget de carrinho abandonado /
-// pedidos não pagos (aba Vendas), a fonte canônica do detalhe dos excluídos.
-const cartAbandonmentAnchor = ref(null)
-async function goToUnpaidGadget() {
-  activeTab.value = 'sales'
-  await nextTick()
-  cartAbandonmentAnchor.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
 function topRegionValue() {
   return kpis.value.top_region_state || '—'
 }
 
 function couponDetail() {
   if (Number(kpis.value.shipping_subsidy_total || 0) > 0) {
-    return `${formatMoney(kpis.value.shipping_subsidy_total)} em frete · ${kpis.value.shipping_subsidy_orders_count ?? 0} pedidos`
+    return `${formatMoney(kpis.value.shipping_subsidy_total)} de frete subsidiado · ${kpis.value.shipping_subsidy_orders_count ?? 0} pedidos`
   }
 
   if (coupons.value.has_coupon_codes) {
@@ -171,27 +152,18 @@ function couponDetail() {
               class="sm:col-span-2 lg:col-span-3 xl:col-span-2"
               :breakdown="revenueBreakdown"
               tooltip="Receita bruta menos descontos, pedidos cancelados/devolvidos, frete e imposto. Pedidos não pagos/indeterminados ficam fora."
-              :note="excludedNote"
-              :note-action-label="excludedNote ? 'ver detalhes' : ''"
-              @note-action="goToUnpaidGadget"
             />
             <ExecutiveKpiCard
               label="Pedidos"
               :value="String(kpis.orders_count ?? 0)"
               :delta-pct="kpis.orders_vs_previous_pct"
               :detail="`${dataQuality.complete_orders_count ?? 0} completos`"
-              :note="excludedNote"
-              :note-action-label="excludedNote ? 'ver detalhes' : ''"
-              @note-action="goToUnpaidGadget"
             />
             <ExecutiveKpiCard
               label="Ticket médio"
               :value="formatMoney(kpis.average_ticket)"
               :delta-pct="kpis.average_ticket_vs_previous_pct"
               detail="Receita líquida / pedidos"
-              :note="excludedNote"
-              :note-action-label="excludedNote ? 'ver detalhes' : ''"
-              @note-action="goToUnpaidGadget"
             />
             <ExecutiveKpiCard
               label="Descontos"
@@ -231,9 +203,7 @@ function couponDetail() {
           <RevenueByHourChart :by-channel-series="summary.revenue.by_channel_series" :granularity="granularity" />
           <ChannelBreakdown :by-channel="summary.revenue.by_channel" />
           <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" />
-          <div ref="cartAbandonmentAnchor" class="scroll-mt-6">
-            <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
-          </div>
+          <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
           <FreightMarginCard :freight-margin="freightMargin" />
           <FreightOrdersTable class="lg:col-span-2" :from="from" :to="to" :channel-ids="channelIds" />
         </section>

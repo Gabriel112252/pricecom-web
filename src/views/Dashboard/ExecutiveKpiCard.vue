@@ -33,8 +33,11 @@ function deltaTone(pct) {
 </script>
 
 <template>
+  <!-- flex-col + mt-auto no detail: o grid da linha de KPIs estica o card
+       até a altura do vizinho mais alto (card Receita); o detail ancora na
+       base pra distribuir o espaço em vez de acumular vazio no rodapé. -->
   <div
-    class="rounded-lg border bg-white p-4 shadow-sm"
+    class="flex h-full flex-col rounded-lg border bg-white p-4 shadow-sm"
     :class="status === 'warning' ? 'border-amber-200' : status === 'critical' ? 'border-red-200' : 'border-slate-200'"
     :title="tooltip || undefined"
   >
@@ -47,7 +50,7 @@ function deltaTone(pct) {
       />
     </div>
     <p class="mt-2 text-2xl font-bold leading-tight text-slate-900">{{ value }}</p>
-    <div class="mt-2 flex min-h-4 items-center justify-between gap-2 text-xs">
+    <div class="mt-auto flex min-h-4 items-center justify-between gap-2 pt-2 text-xs">
       <span class="truncate text-slate-500">{{ detail }}</span>
       <span v-if="deltaLabel(deltaPct)" class="shrink-0 font-medium" :class="deltaTone(deltaPct)">{{ deltaLabel(deltaPct) }}</span>
     </div>
