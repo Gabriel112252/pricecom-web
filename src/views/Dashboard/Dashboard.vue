@@ -78,6 +78,11 @@ const granularity = computed(() => summary.value?.granularity ?? 'day')
 const kpis = computed(() => summary.value?.kpis ?? {})
 const revenueBreakdown = computed(() => summary.value?.revenue_breakdown ?? {})
 const dataQuality = computed(() => summary.value?.data_quality ?? {})
+// Mesmo critério de "disponível" usado em build_financial/build_margin no
+// backend — cost_price/unit_cost zerado em produção (ProductCostSyncJob)
+// deixa financial_status incompleto, e daí "Top produtos por margem" seria
+// só ruído. Some sozinho quando a cobertura de custo voltar a ficar completa.
+const marginDataAvailable = computed(() => dataQuality.value.financial_status === 'complete')
 const financialComposition = computed(() => summary.value?.financial_composition ?? {})
 const financial = computed(() => summary.value?.financial ?? {})
 const revenueTimeline = computed(() => summary.value?.revenue_timeline ?? summary.value?.revenue?.by_day ?? [])
@@ -216,8 +221,8 @@ function couponDetail() {
 
         <!-- Produtos -->
         <section v-show="activeTab === 'products'" class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <TopProductsByRevenueChart :products="summary.top_products_by_revenue" />
-          <TopProductsByMarginChart :products="summary.top_products_by_margin" />
+          <TopProductsByRevenueChart :class="{ 'lg:col-span-2': !marginDataAvailable }" :products="summary.top_products_by_revenue" />
+          <TopProductsByMarginChart v-if="marginDataAvailable" :products="summary.top_products_by_margin" />
           <ProductTurnoverSummary class="lg:col-span-2" :products="summary.product_turnover_summary" />
         </section>
 

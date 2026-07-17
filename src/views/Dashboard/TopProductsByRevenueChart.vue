@@ -17,7 +17,25 @@ const option = computed(() => ({
   grid: { left: 8, right: 56, top: 8, bottom: 8, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
   tooltip: {
     trigger: 'item',
+    confine: true,
     formatter: (params) => `${params.name}<br/>${formatMoney(params.value)}`,
+    // Barras horizontais empilhadas de perto (barMaxWidth: 20) — a posição
+    // padrão do tooltip perto do cursor cobria a barra vizinha. Desloca pra
+    // direita do cursor e detecta a borda do gráfico pra virar pra
+    // esquerda quando não cabe; confine acima já evita vazar do container.
+    position(point, params, dom, rect, size) {
+      const [x, y] = point
+      const [tooltipWidth, tooltipHeight] = size.contentSize
+      const [viewWidth, viewHeight] = size.viewSize
+
+      let posX = x + 15
+      if (posX + tooltipWidth > viewWidth) posX = x - tooltipWidth - 15
+
+      let posY = y - tooltipHeight / 2
+      posY = Math.max(0, Math.min(posY, viewHeight - tooltipHeight))
+
+      return [posX, posY]
+    },
   },
   xAxis: {
     type: 'value',
