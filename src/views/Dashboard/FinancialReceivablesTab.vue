@@ -108,6 +108,16 @@ const installmentChartOption = computed(() => ({
       data: installmentDistribution.value.map((row) => row.net_amount),
       itemStyle: { color: CATEGORICAL_COLORS[0], borderRadius: [4, 4, 0, 0] },
       barMaxWidth: 48,
+      // 7-12x costuma ser ordens de grandeza menor que à vista/2-6x — numa
+      // escala linear a barra fica visualmente imperceptível. Em vez de
+      // log scale (distorce a percepção de magnitude, que aqui é real e
+      // relevante), mostra o valor como rótulo, não dependendo só da altura.
+      label: {
+        show: true,
+        position: 'top',
+        color: CHART_INK.secondary,
+        formatter: (params) => formatMoney(params.value),
+      },
     },
   ],
 }))
