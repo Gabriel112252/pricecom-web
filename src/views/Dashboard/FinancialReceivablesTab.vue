@@ -6,6 +6,14 @@ import { CATEGORICAL_COLORS, CHART_GRID, CHART_INK, CHART_TEXT_STYLE } from '@/l
 import { formatCompactMoney, formatMoney } from '@/lib/format'
 import StatusBadge from '@/components/StatusBadge.vue'
 
+// Do payload de /dashboard/summary (Dashboard::BuildSummary#build_financial),
+// não de /dashboard/financial — segue o período PRINCIPAL do dashboard, não
+// o filtro de payment_date_from/to desta aba (que projeta recebíveis
+// futuros). Por isso fica em bloco separado, com nota própria.
+defineProps({
+  gatewayFeeAvgPerOrder: { type: Number, default: null },
+})
+
 function toISODate(date) {
   return date.toISOString().slice(0, 10)
 }
@@ -318,6 +326,21 @@ onMounted(load)
             </div>
           </div>
           <p class="text-xs text-slate-500">{{ receivables.fee_summary?.receivables_count || 0 }} recebíveis filtrados</p>
+
+          <div class="border-t border-slate-100 pt-4">
+            <div
+              class="rounded-lg bg-slate-50 p-3"
+              title="Média do período principal do dashboard (não o filtro de datas acima) sobre pedidos do canal Yampi — não é a taxa de nenhum pedido individual."
+            >
+              <p class="text-xs text-slate-500">Taxa média por pedido (Yampi)</p>
+              <p class="mt-1 font-semibold text-slate-900">
+                {{ gatewayFeeAvgPerOrder == null ? '—' : formatMoney(gatewayFeeAvgPerOrder) }}
+              </p>
+              <p class="mt-1 text-[11px] leading-snug text-slate-400">
+                Média do período principal do dashboard, não desta tabela — nunca o valor de um pedido específico.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

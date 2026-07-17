@@ -79,6 +79,7 @@ const kpis = computed(() => summary.value?.kpis ?? {})
 const revenueBreakdown = computed(() => summary.value?.revenue_breakdown ?? {})
 const dataQuality = computed(() => summary.value?.data_quality ?? {})
 const financialComposition = computed(() => summary.value?.financial_composition ?? {})
+const financial = computed(() => summary.value?.financial ?? {})
 const revenueTimeline = computed(() => summary.value?.revenue_timeline ?? summary.value?.revenue?.by_day ?? [])
 const salesByChannel = computed(() => summary.value?.sales_by_channel ?? [])
 const regionalSales = computed(() => summary.value?.regional_sales ?? {})
@@ -204,7 +205,10 @@ function couponDetail() {
         </section>
 
         <!-- Financeiro -->
-        <FinancialReceivablesTab v-show="activeTab === 'finance'" />
+        <FinancialReceivablesTab
+          v-show="activeTab === 'finance'"
+          :gateway-fee-avg-per-order="financial.gateway_fee_avg_per_order"
+        />
 
         <!-- Produtos -->
         <section v-show="activeTab === 'products'" class="grid grid-cols-1 gap-5 lg:grid-cols-2">
