@@ -107,7 +107,11 @@ function couponDetail() {
         <h1 class="text-2xl font-semibold text-slate-900">Dashboard</h1>
         <p class="mt-1 text-sm text-slate-500">Visão geral operacional do hub Pricecom.</p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
+      <!-- Escondido na aba Financeiro: ela tem seu próprio filtro local
+           (gateway + data de pagamento) com escopo diferente do filtro
+           global — os dois lado a lado confundiam, já que o global só
+           afetava gateway_fee_avg_per_order dentro dessa aba. -->
+      <div v-if="activeTab !== 'finance'" class="flex flex-wrap items-center gap-2">
         <ChannelFilter :model-value="channelIds" @update:model-value="handleChannelChange" />
         <PeriodFilter :from="from" :to="to" @change="handlePeriodChange" />
       </div>
