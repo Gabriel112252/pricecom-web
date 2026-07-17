@@ -6,6 +6,7 @@ export const CONFLICT_TYPE_LABEL = {
   refund_without_cancellation: 'Reembolso sem cancelamento',
   settlement_amount_mismatch: 'Divergência no repasse',
   missing_settlement: 'Repasse não encontrado',
+  fee_rate_mismatch: 'Taxa cobrada divergente',
 }
 
 // Plain-language explanation of what triggered each conflict type — shown
@@ -26,6 +27,8 @@ export const CONFLICT_TYPE_DESCRIPTION = {
     'O valor que o canal de vendas repassou para este pedido é diferente do valor líquido esperado (receita bruta menos reembolsos). Pode indicar taxa cobrada a mais, repasse parcial ou erro no relatório importado.',
   missing_settlement:
     'Este pedido já deveria ter sido repassado pelo canal de vendas, mas nenhum lançamento de repasse foi encontrado até agora.',
+  fee_rate_mismatch:
+    'A taxa que a Pagar.me cobrou nesta transação é diferente da taxa negociada cadastrada em Configurações. Pode indicar renegociação não atualizada no cadastro ou cobrança incorreta da adquirente.',
 }
 
 // Least-severe first: matches the order severity chips/bars should render in.

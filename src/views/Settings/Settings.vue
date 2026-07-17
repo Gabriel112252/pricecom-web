@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import PaymentFeeRulesSection from './PaymentFeeRulesSection.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -118,6 +119,8 @@ onMounted(() => {
           </div>
         </template>
       </div>
+
+      <PaymentFeeRulesSection />
     </section>
   </div>
 </template>
