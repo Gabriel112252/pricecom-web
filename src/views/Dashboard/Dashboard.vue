@@ -6,11 +6,12 @@ import { DASHBOARD_TABS } from './lib/tabs'
 import PeriodFilter from './PeriodFilter.vue'
 import ChannelFilter from './ChannelFilter.vue'
 import ExecutiveKpiCard from './ExecutiveKpiCard.vue'
+import RevenueBreakdownCard from './RevenueBreakdownCard.vue'
 import RevenueOrdersChart from './RevenueOrdersChart.vue'
 import SalesByChannelChart from './SalesByChannelChart.vue'
 import FinancialReceivablesTab from './FinancialReceivablesTab.vue'
 import BrazilOrdersMap from './BrazilOrdersMap.vue'
-import CouponUsageChart from './CouponUsageChart.vue'
+import DiscountCompositionCard from './DiscountCompositionCard.vue'
 import CartAbandonmentCard from './CartAbandonmentCard.vue'
 import FreightMarginCard from './FreightMarginCard.vue'
 import FreightOrdersTable from './FreightOrdersTable.vue'
@@ -75,6 +76,7 @@ onMounted(load)
 
 const granularity = computed(() => summary.value?.granularity ?? 'day')
 const kpis = computed(() => summary.value?.kpis ?? {})
+const revenueBreakdown = computed(() => summary.value?.revenue_breakdown ?? {})
 const dataQuality = computed(() => summary.value?.data_quality ?? {})
 const financialComposition = computed(() => summary.value?.financial_composition ?? {})
 const revenueTimeline = computed(() => summary.value?.revenue_timeline ?? summary.value?.revenue?.by_day ?? [])
@@ -83,13 +85,6 @@ const regionalSales = computed(() => summary.value?.regional_sales ?? {})
 const coupons = computed(() => summary.value?.coupons ?? {})
 const cartAbandonment = computed(() => summary.value?.cart_abandonment ?? {})
 const freightMargin = computed(() => summary.value?.freight_margin ?? {})
-
-function coverageStatus() {
-  const coverage = Number(kpis.value.financial_coverage_percentage ?? 100)
-  if (coverage < 70) return 'critical'
-  if (coverage < 95) return 'warning'
-  return 'default'
-}
 
 // Selo de transparência: os KPIs excluem pedidos unpaid/status_unknown
 // (Order::NON_REVENUE_STATUSES no backend); quando existem no período+filtro,
@@ -101,22 +96,6 @@ const excludedNote = computed(() => {
   return `Exclui ${excludedCount.value} ${plural} (${formatMoney(kpis.value.non_revenue_excluded_amount)}).`
 })
 
-// "Cobertura financeira" mede completude de DADOS (custo, frete real e
-// imposto conforme as fontes configuradas), não pagamento. Quando crítica,
-// o card explica em texto em vez de só a bolinha vermelha.
-const coverageTooltip =
-  'Percentual dos pedidos válidos do período com dados financeiros completos: custo dos itens, ' +
-  'frete real e impostos, conforme as fontes configuradas em Integrações. Não mede pagamento — ' +
-  'pedidos não pagos já ficam fora de todas as métricas.'
-const coverageNote = computed(() => {
-  const total = Number(dataQuality.value.complete_orders_count ?? 0) + Number(dataQuality.value.incomplete_orders_count ?? 0)
-  if (total === 0 || coverageStatus() !== 'critical') return ''
-  if (Number(dataQuality.value.complete_orders_count ?? 0) === 0) {
-    return 'Nenhum pedido do período com custo, frete e imposto completos.'
-  }
-  return 'Maioria dos pedidos sem custo, frete ou imposto completos.'
-})
-
 // "Ver detalhes" dos selos: rola até o gadget de carrinho abandonado /
 // pedidos não pagos (aba Vendas), a fonte canônica do detalhe dos excluídos.
 const cartAbandonmentAnchor = ref(null)
@@ -124,14 +103,6 @@ async function goToUnpaidGadget() {
   activeTab.value = 'sales'
   await nextTick()
   cartAbandonmentAnchor.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-// Detalhe da cobertura vive no bloco de qualidade de dados (aba Saúde).
-const dataQualityAnchor = ref(null)
-async function goToDataQuality() {
-  activeTab.value = 'health'
-  await nextTick()
-  dataQualityAnchor.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function topRegionValue() {
@@ -193,12 +164,10 @@ function couponDetail() {
         <!-- Visão Geral -->
         <section v-show="activeTab === 'overview'" class="space-y-6">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <ExecutiveKpiCard
-              label="Receita líquida"
-              :value="formatMoney(kpis.net_revenue)"
-              :delta-pct="kpis.net_revenue_vs_previous_pct"
-              :detail="`Bruta ${formatMoney(kpis.gross_revenue)}`"
-              tooltip="Receita bruta menos descontos e reembolsos. Pedidos não pagos/indeterminados ficam fora."
+            <RevenueBreakdownCard
+              class="sm:col-span-2 lg:col-span-3 xl:col-span-2"
+              :breakdown="revenueBreakdown"
+              tooltip="Receita bruta menos descontos, pedidos cancelados/devolvidos, frete e imposto. Pedidos não pagos/indeterminados ficam fora."
               :note="excludedNote"
               :note-action-label="excludedNote ? 'ver detalhes' : ''"
               @note-action="goToUnpaidGadget"
@@ -233,17 +202,6 @@ function couponDetail() {
               :detail="`${kpis.top_region_orders_count ?? 0} pedidos · ${formatMoney(kpis.top_region_net_revenue)}`"
               tooltip="UF com maior quantidade de pedidos no período."
             />
-            <ExecutiveKpiCard
-              label="Cobertura financeira"
-              :value="formatPct(kpis.financial_coverage_percentage)"
-              :status="coverageStatus()"
-              :detail="`${dataQuality.incomplete_orders_count ?? 0} pedidos com dados incompletos`"
-              :tooltip="coverageTooltip"
-              :note="coverageNote"
-              note-tone="critical"
-              :note-action-label="coverageNote ? 'ver detalhes' : ''"
-              @note-action="goToDataQuality"
-            />
           </div>
 
           <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -253,7 +211,7 @@ function couponDetail() {
 
           <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <BrazilOrdersMap :regional-sales="regionalSales" />
-            <CouponUsageChart :coupons="coupons" />
+            <DiscountCompositionCard :coupons="coupons" :gross-revenue="Number(revenueBreakdown.gross_revenue || 0)" />
           </div>
         </section>
 
@@ -296,9 +254,7 @@ function couponDetail() {
             />
           </div>
           <FinancialCompositionBlock :composition="financialComposition" />
-          <div ref="dataQualityAnchor" class="scroll-mt-6">
-            <DataQualityBlock :quality="dataQuality" />
-          </div>
+          <DataQualityBlock :quality="dataQuality" />
         </section>
       </div>
     </template>

@@ -16,8 +16,10 @@ defineProps({
 
 const emit = defineEmits(['note-action'])
 
+// Sem período anterior comparável = não renderiza nada (nada de "sem
+// comparação" — texto de ausência de dado não é alerta).
 function deltaLabel(pct) {
-  if (pct === null || pct === undefined) return 'sem comparação'
+  if (pct === null || pct === undefined) return ''
   const sign = pct >= 0 ? '+' : ''
   return `${sign}${pct.toFixed(1)}%`
 }
@@ -45,7 +47,7 @@ function deltaTone(pct) {
     <p class="mt-2 text-2xl font-bold leading-tight text-slate-900">{{ value }}</p>
     <div class="mt-2 flex min-h-4 items-center justify-between gap-2 text-xs">
       <span class="truncate text-slate-500">{{ detail }}</span>
-      <span class="shrink-0 font-medium" :class="deltaTone(deltaPct)">{{ deltaLabel(deltaPct) }}</span>
+      <span v-if="deltaLabel(deltaPct)" class="shrink-0 font-medium" :class="deltaTone(deltaPct)">{{ deltaLabel(deltaPct) }}</span>
     </div>
     <p
       v-if="note"
