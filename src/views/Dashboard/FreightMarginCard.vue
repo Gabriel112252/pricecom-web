@@ -11,6 +11,10 @@ const CHARGED_COLOR = CATEGORICAL_COLORS[0] // blue
 const COST_COLOR = CATEGORICAL_COLORS[2] // amber
 const MARGIN_COLOR = CATEGORICAL_COLORS[5] // red
 
+// The API keeps these labels source-neutral: Yampi-compatible shipments use
+// carrier cost synced via LucroFrete/Melhor Envio, while TikTok uses the
+// platform logistics cost from payment.original_shipping_fee.
+
 const available = computed(() => props.freightMargin.available === true)
 const orderCount = computed(() => Number(props.freightMargin.order_count || 0))
 const marginValue = computed(() => Number(props.freightMargin.margin_value || 0))
@@ -88,7 +92,7 @@ const dailyOption = computed(() => ({
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h3 class="text-sm font-semibold text-slate-900">Margem de frete</h3>
-        <p class="mt-0.5 text-xs text-slate-400">LucroFrete · pedidos reais casados (custo transportadora x cobrado)</p>
+        <p class="mt-0.5 text-xs text-slate-400">Pedidos reais · custo real x frete cobrado</p>
       </div>
       <div class="text-right text-xs text-slate-500">
         <p class="font-semibold" :class="negativeMargin ? 'text-red-600' : 'text-slate-900'">
