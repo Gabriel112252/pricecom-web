@@ -15,7 +15,6 @@ import DiscountCompositionCard from './DiscountCompositionCard.vue'
 import DiscountTicketExposureCard from './DiscountTicketExposureCard.vue'
 import CartAbandonmentCard from './CartAbandonmentCard.vue'
 import FreightMarginCard from './FreightMarginCard.vue'
-import FreightOrdersTable from './FreightOrdersTable.vue'
 import FinancialCompositionBlock from './FinancialCompositionBlock.vue'
 import DataQualityBlock from './DataQualityBlock.vue'
 import OrderVolumeChart from './OrderVolumeChart.vue'
@@ -187,14 +186,21 @@ function couponDetail() {
         </section>
 
         <!-- Vendas -->
-        <section v-show="activeTab === 'sales'" class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <OrderVolumeChart :by-channel-series="summary.orders.by_channel_series" :granularity="granularity" />
-          <RevenueByHourChart :by-channel-series="summary.revenue.by_channel_series" :granularity="granularity" />
-          <ChannelBreakdown :by-channel="summary.revenue.by_channel" />
-          <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" />
-          <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
-          <FreightMarginCard :freight-margin="freightMargin" />
-          <FreightOrdersTable class="lg:col-span-2" :from="from" :to="to" :channel-ids="channelIds" />
+        <section v-show="activeTab === 'sales'" class="space-y-6">
+          <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <OrderVolumeChart :by-channel-series="summary.orders.by_channel_series" :granularity="granularity" />
+            <RevenueByHourChart :by-channel-series="summary.revenue.by_channel_series" :granularity="granularity" />
+            <ChannelBreakdown :by-channel="summary.revenue.by_channel" />
+            <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" />
+          </div>
+
+          <!-- items-start: cada card com altura do próprio conteúdo — sem
+               o stretch implícito, o FreightMarginCard esticava pra
+               acompanhar a lista de produtos abandonados do card vizinho -->
+          <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+            <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
+            <FreightMarginCard :freight-margin="freightMargin" />
+          </div>
         </section>
 
         <!-- Financeiro -->

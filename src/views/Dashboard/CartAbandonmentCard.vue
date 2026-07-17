@@ -189,7 +189,7 @@ function productPercent(row) {
         <p class="mt-0.5 text-xs text-slate-400">
           {{ tiktokMode ? 'Produtos mais presentes nos pedidos ainda não pagos' : 'Produtos mais presentes nos carrinhos ainda abandonados' }}
         </p>
-        <div class="mt-3 space-y-3">
+        <div class="mt-3 max-h-[400px] space-y-3 overflow-y-auto pr-1">
           <div v-for="row in topProducts" :key="row.sku || row.name" class="space-y-1.5">
             <div class="flex items-start justify-between gap-3 text-sm">
               <div class="min-w-0">
