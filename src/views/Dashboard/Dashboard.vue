@@ -87,10 +87,6 @@ const coupons = computed(() => summary.value?.coupons ?? {})
 const cartAbandonment = computed(() => summary.value?.cart_abandonment ?? {})
 const freightMargin = computed(() => summary.value?.freight_margin ?? {})
 
-function topRegionValue() {
-  return kpis.value.top_region_state || '—'
-}
-
 function couponDetail() {
   if (Number(kpis.value.shipping_subsidy_total || 0) > 0) {
     return `${formatMoney(kpis.value.shipping_subsidy_total)} de frete subsidiado · ${kpis.value.shipping_subsidy_orders_count ?? 0} pedidos`
@@ -147,9 +143,8 @@ function couponDetail() {
       <div class="space-y-6 transition-opacity" :class="{ 'opacity-60': loading }">
         <!-- Visão Geral -->
         <section v-show="activeTab === 'overview'" class="space-y-6">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <RevenueBreakdownCard
-              class="sm:col-span-2 lg:col-span-3 xl:col-span-2"
               :breakdown="revenueBreakdown"
               tooltip="Receita bruta menos descontos, pedidos cancelados/devolvidos, frete e imposto. Pedidos não pagos/indeterminados ficam fora."
             />
@@ -170,12 +165,6 @@ function couponDetail() {
               :value="formatMoney(kpis.coupon_discount_total)"
               :detail="couponDetail()"
               tooltip="Soma de cupons identificados, descontos comerciais sem código e subsídio de frete estimado quando há frete real."
-            />
-            <ExecutiveKpiCard
-              label="Região líder"
-              :value="topRegionValue()"
-              :detail="`${kpis.top_region_orders_count ?? 0} pedidos · ${formatMoney(kpis.top_region_net_revenue)}`"
-              tooltip="UF com maior quantidade de pedidos no período."
             />
           </div>
 
