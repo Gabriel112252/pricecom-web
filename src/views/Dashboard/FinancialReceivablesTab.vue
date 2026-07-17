@@ -51,6 +51,67 @@ const statusOptions = computed(() => {
 })
 const paymentMethodOptions = computed(() => receivables.value.payment_method_options ?? [])
 
+const byPaymentMethod = computed(() => receivables.value.by_payment_method ?? [])
+const hasPaymentMethodData = computed(() => byPaymentMethod.value.some((row) => Number(row.receivables_count || 0) > 0))
+
+const paymentMethodChartOption = computed(() => ({
+  textStyle: CHART_TEXT_STYLE,
+  tooltip: {
+    trigger: 'item',
+    formatter: (params) => `${params.name}<br />${params.data.count} recebíveis · ${formatMoney(params.data.value)} (${params.percent}%)`,
+  },
+  legend: { bottom: 0, textStyle: CHART_TEXT_STYLE },
+  series: [
+    {
+      type: 'pie',
+      radius: ['45%', '70%'],
+      itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
+      label: { show: false },
+      data: byPaymentMethod.value.map((row, index) => ({
+        name: methodLabel(row.payment_method),
+        value: row.net_amount,
+        count: row.receivables_count,
+        itemStyle: { color: CATEGORICAL_COLORS[index % CATEGORICAL_COLORS.length] },
+      })),
+    },
+  ],
+}))
+
+const installmentDistribution = computed(() => receivables.value.installment_distribution ?? [])
+const hasInstallmentData = computed(() => installmentDistribution.value.some((row) => Number(row.receivables_count || 0) > 0))
+
+const installmentChartOption = computed(() => ({
+  textStyle: CHART_TEXT_STYLE,
+  grid: { ...CHART_GRID, right: 8 },
+  tooltip: {
+    trigger: 'axis',
+    formatter(params) {
+      const row = installmentDistribution.value[params[0]?.dataIndex] || {}
+      return `<strong>${row.label}</strong><br />${row.receivables_count || 0} recebíveis · ${formatMoney(row.net_amount)}`
+    },
+  },
+  xAxis: {
+    type: 'category',
+    data: installmentDistribution.value.map((row) => row.label),
+    axisLabel: { color: CHART_INK.muted },
+    axisLine: { lineStyle: { color: CHART_INK.grid } },
+    axisTick: { show: false },
+  },
+  yAxis: {
+    type: 'value',
+    axisLabel: { color: CHART_INK.muted, formatter: (value) => formatCompactMoney(value) },
+    splitLine: { lineStyle: { color: CHART_INK.grid } },
+  },
+  series: [
+    {
+      type: 'bar',
+      data: installmentDistribution.value.map((row) => row.net_amount),
+      itemStyle: { color: CATEGORICAL_COLORS[0], borderRadius: [4, 4, 0, 0] },
+      barMaxWidth: 48,
+    },
+  ],
+}))
+
 const cashFlowOption = computed(() => {
   const timeline = receivables.value.cash_flow?.timeline ?? []
 
@@ -245,6 +306,22 @@ onMounted(load)
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
+          <select
+            v-model="filters.status"
+            class="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700"
+            @change="reloadFromFirstPage"
+          >
+            <option value="">Todos os status</option>
+            <option v-for="status in statusOptions" :key="status" :value="status">{{ statusLabel(status) }}</option>
+          </select>
+          <select
+            v-model="filters.payment_method"
+            class="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700"
+            @change="reloadFromFirstPage"
+          >
+            <option value="">Todas as formas</option>
+            <option v-for="method in paymentMethodOptions" :key="method" :value="method">{{ methodLabel(method) }}</option>
+          </select>
           <input
             v-model="filters.payment_date_from"
             type="date"
@@ -345,7 +422,7 @@ onMounted(load)
       </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-3">
       <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="text-sm font-semibold text-slate-900">Recebíveis por forma de pagamento</h3>
         <div class="mt-3 overflow-x-auto">
@@ -359,10 +436,10 @@ onMounted(load)
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-if="!(receivables.by_payment_method || []).length">
+              <tr v-if="!byPaymentMethod.length">
                 <td colspan="4" class="py-6 text-center text-slate-400">Sem dados no período.</td>
               </tr>
-              <tr v-for="method in receivables.by_payment_method || []" :key="method.payment_method">
+              <tr v-for="method in byPaymentMethod" :key="method.payment_method">
                 <td class="py-2 pr-3 font-medium text-slate-900">{{ methodLabel(method.payment_method) }}</td>
                 <td class="px-3 py-2 text-right text-slate-600">{{ method.receivables_count }}</td>
                 <td class="px-3 py-2 text-right text-slate-600">{{ method.pending_installments_count }}</td>
@@ -374,25 +451,21 @@ onMounted(load)
       </div>
 
       <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 class="text-sm font-semibold text-slate-900">Filtros da tabela</h3>
-        <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <select
-            v-model="filters.status"
-            class="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700"
-            @change="reloadFromFirstPage"
-          >
-            <option value="">Todos os status</option>
-            <option v-for="status in statusOptions" :key="status" :value="status">{{ statusLabel(status) }}</option>
-          </select>
-          <select
-            v-model="filters.payment_method"
-            class="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700"
-            @change="reloadFromFirstPage"
-          >
-            <option value="">Todas as formas</option>
-            <option v-for="method in paymentMethodOptions" :key="method" :value="method">{{ methodLabel(method) }}</option>
-          </select>
+        <h3 class="text-sm font-semibold text-slate-900">Distribuição por forma de pagamento</h3>
+        <p class="mt-0.5 text-xs text-slate-400">Recebíveis filtrados · valor líquido</p>
+        <div v-if="!hasPaymentMethodData" class="chart-frame-sm flex items-center justify-center text-sm text-slate-400">
+          Sem dados no período.
         </div>
+        <v-chart v-else class="chart-frame-sm mt-2 w-full" :option="paymentMethodChartOption" autoresize />
+      </div>
+
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-900">Distribuição por parcelamento</h3>
+        <p class="mt-0.5 text-xs text-slate-400">Só cartão de crédito · à vista, 2-6x, 7-12x</p>
+        <div v-if="!hasInstallmentData" class="chart-frame-sm flex items-center justify-center text-sm text-slate-400">
+          Sem recebíveis de cartão no período.
+        </div>
+        <v-chart v-else class="chart-frame-sm mt-2 w-full" :option="installmentChartOption" autoresize />
       </div>
     </div>
 
@@ -497,6 +570,11 @@ onMounted(load)
 <style scoped>
 .chart-frame {
   height: 280px;
+  width: 100%;
+}
+
+.chart-frame-sm {
+  height: 220px;
   width: 100%;
 }
 </style>
