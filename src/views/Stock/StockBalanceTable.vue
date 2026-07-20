@@ -217,7 +217,14 @@ async function confirmEdit(product, channelName) {
         @change="onChannelChange"
       >
         <option value="">Todos os canais</option>
-        <option v-for="c in connectedChannels" :key="c" :value="c">{{ channelLabel(c) }}</option>
+        <!-- `channels` (not connectedChannels) — same root cause as the
+             table columns: /integrations/channels only lists credentials
+             with status "active", so a channel with real listings but a
+             currently broken credential (ex: TikTok pending/error) would
+             disappear from this dropdown too. `channels` already merges
+             active credentials with real listing data (see #active_channels
+             on StockOverviewController). -->
+        <option v-for="c in channels" :key="c" :value="c">{{ channelLabel(c) }}</option>
       </select>
     </div>
 
@@ -269,18 +276,36 @@ async function confirmEdit(product, channelName) {
                     </svg>
                     Atualizando...
                   </span>
-                  <input
-                    v-else-if="editingKey === cellKey(product, channelName)"
-                    v-model="editValue"
-                    type="number"
-                    min="0"
-                    step="any"
-                    class="w-24 rounded border border-indigo-400 px-2 py-1 text-right tabular-nums text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                    aria-label="Nova quantidade"
-                    @keydown.enter.prevent="confirmEdit(product, channelName)"
-                    @keydown.esc="cancelEdit"
-                    @blur="confirmEdit(product, channelName)"
-                  />
+                  <span v-else-if="editingKey === cellKey(product, channelName)" class="inline-flex items-center gap-1">
+                    <input
+                      v-model="editValue"
+                      type="number"
+                      min="0"
+                      step="any"
+                      class="w-20 rounded border border-indigo-400 px-2 py-1 text-right tabular-nums text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                      aria-label="Nova quantidade"
+                      @keydown.enter.prevent="confirmEdit(product, channelName)"
+                      @keydown.esc.prevent="cancelEdit"
+                    />
+                    <button
+                      type="button"
+                      class="rounded p-1 text-emerald-600 hover:bg-emerald-50"
+                      title="Confirmar"
+                      aria-label="Confirmar nova quantidade"
+                      @click="confirmEdit(product, channelName)"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded p-1 text-red-600 hover:bg-red-50"
+                      title="Cancelar"
+                      aria-label="Cancelar edição"
+                      @click="cancelEdit"
+                    >
+                      ✕
+                    </button>
+                  </span>
                   <button
                     v-else-if="auth.isAdmin"
                     type="button"
