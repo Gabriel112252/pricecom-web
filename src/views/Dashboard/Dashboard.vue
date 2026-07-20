@@ -14,6 +14,7 @@ import BrazilOrdersMap from './BrazilOrdersMap.vue'
 import DiscountCompositionCard from './DiscountCompositionCard.vue'
 import DiscountTicketExposureCard from './DiscountTicketExposureCard.vue'
 import CartAbandonmentCard from './CartAbandonmentCard.vue'
+import StockAlertsCard from './StockAlertsCard.vue'
 import FreightMarginCard from './FreightMarginCard.vue'
 import FinancialCompositionBlock from './FinancialCompositionBlock.vue'
 import DataQualityBlock from './DataQualityBlock.vue'
@@ -175,6 +176,14 @@ function couponDetail() {
               :detail="couponDetail()"
               tooltip="Soma de cupons identificados, descontos comerciais sem código e subsídio de frete estimado quando há frete real."
             />
+          </div>
+
+          <!-- Card isolado, mesma grade de largura da linha de KPIs acima
+               (só 1 dos 4 slots ocupado) — operacional, não financeiro,
+               então fica numa linha própria em vez de disputar espaço com
+               os KPIs de receita. -->
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StockAlertsCard />
           </div>
 
           <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">

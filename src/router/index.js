@@ -47,8 +47,8 @@ const routes = [
       {
         path: 'estoque',
         name: 'inventory',
-        component: () => import('@/views/PlaceholderView.vue'),
-        meta: { title: 'Estoque', requiresAdmin: true },
+        component: () => import('@/views/Stock/Stock.vue'),
+        meta: { title: 'Estoque' },
       },
       {
         path: 'financeiro',

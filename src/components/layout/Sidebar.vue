@@ -8,6 +8,8 @@ import SidebarSubmenu from './SidebarSubmenu.vue'
 import {
   LayoutDashboard,
   ShoppingCart,
+  Package,
+  Boxes,
   Banknote,
   ShieldCheck,
   Settings,
@@ -21,9 +23,16 @@ const auth = useAuthStore()
 const router = useRouter()
 const { collapsed, toggleCollapsed, mobileOpen, closeMobile } = useSidebar()
 
+// Produtos/Estoque promovidos pro nível superior — são operacionais
+// (consultados no dia a dia), diferente de Integrações/Geral em
+// Configurações, que são tela de setup. O cadastro da regra de alerta de
+// estoque (StockAlertRule) continua em Configurações — configurar o
+// gatilho é uma tarefa diferente de olhar o saldo atual.
 const MAIN_ITEMS = [
   { label: 'Dashboard', to: { name: 'dashboard' }, icon: LayoutDashboard },
   { label: 'Pedidos', to: { name: 'orders' }, icon: ShoppingCart },
+  { label: 'Produtos', to: { name: 'products' }, icon: Package },
+  { label: 'Estoque', to: { name: 'inventory' }, icon: Boxes },
   { label: 'Financeiro', to: { name: 'financial' }, icon: Banknote },
   { label: 'Auditoria', to: { name: 'audit' }, icon: ShieldCheck },
 ]
@@ -32,8 +41,6 @@ const MAIN_ITEMS = [
 // lock icon instead of hiding them) — the router guard is what actually
 // enforces the block, matching the backend's admin-only write endpoints.
 const SETTINGS_ITEMS = [
-  { label: 'Produtos', to: { name: 'products' } },
-  { label: 'Estoque', to: { name: 'inventory' }, restricted: true },
   { label: 'Integrações', to: { name: 'integrations' }, restricted: true },
   { label: 'Geral', to: { name: 'settings' } },
 ]

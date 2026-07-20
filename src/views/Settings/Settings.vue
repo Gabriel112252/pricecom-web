@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import PaymentFeeRulesSection from './PaymentFeeRulesSection.vue'
+import StockAlertRulesSection from './StockAlertRulesSection.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -121,6 +122,7 @@ onMounted(() => {
       </div>
 
       <PaymentFeeRulesSection />
+      <StockAlertRulesSection />
     </section>
   </div>
 </template>
