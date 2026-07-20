@@ -1,6 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import api from '@/lib/api'
+import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
 
 const CHANNEL_LABELS = {
   yampi: 'Yampi',
@@ -10,6 +12,8 @@ const CHANNEL_LABELS = {
   shopee: 'Shopee',
 }
 
+const auth = useAuthStore()
+const toast = useToast()
 const products = ref([])
 const meta = ref({})
 const loading = ref(true)
@@ -17,7 +21,47 @@ const errorMessage = ref('')
 const search = ref('')
 const channel = ref('')
 const connectedChannels = ref([])
+const activeChannels = ref(null)
 const page = ref(1)
+const sortChannel = ref(null)
+const sortDirection = ref('asc')
+const editingKey = ref(null)
+const editValue = ref('')
+const updatingKey = ref(null)
+
+const channels = computed(() => {
+  const listingChannels = new Set(
+    products.value.flatMap((product) => (product.channels || []).map((entry) => entry.channel)),
+  )
+  // The aggregate endpoint is authoritative: a stale listing from a
+  // disconnected channel must not resurrect a column. The fallback only
+  // supports older API responses that predate active_channels.
+  const configuredChannels = activeChannels.value === null ? connectedChannels.value : activeChannels.value
+  const source = configuredChannels.length || activeChannels.value !== null ? configuredChannels : [...listingChannels]
+
+  return [...new Set(source)].sort((a, b) => channelLabel(a).localeCompare(channelLabel(b), 'pt-BR'))
+})
+
+const displayedProducts = computed(() => {
+  if (!sortChannel.value) return products.value
+
+  const direction = sortDirection.value === 'asc' ? 1 : -1
+  const channelToSort = sortChannel.value
+
+  return [...products.value].sort((left, right) => {
+    const leftEntry = channelEntry(left, channelToSort)
+    const rightEntry = channelEntry(right, channelToSort)
+    const leftValue = leftEntry ? Number(leftEntry.stock_qty) : null
+    const rightValue = rightEntry ? Number(rightEntry.stock_qty) : null
+    const leftMissing = leftValue == null || Number.isNaN(leftValue)
+    const rightMissing = rightValue == null || Number.isNaN(rightValue)
+
+    // Products without a listing for the selected channel always stay last.
+    if (leftMissing !== rightMissing) return leftMissing ? 1 : -1
+    if (!leftMissing && leftValue !== rightValue) return (leftValue - rightValue) * direction
+    return String(left.name || '').localeCompare(String(right.name || ''), 'pt-BR')
+  })
+})
 
 async function load() {
   loading.value = true
@@ -27,6 +71,7 @@ async function load() {
       params: { q: search.value || undefined, channel: channel.value || undefined, page: page.value, per_page: 50 },
     })
     products.value = data.products
+    activeChannels.value = Array.isArray(data.active_channels) ? data.active_channels : null
     meta.value = data.meta || {}
   } catch (e) {
     errorMessage.value = e.response?.data?.error || 'Não foi possível carregar o estoque.'
@@ -38,9 +83,11 @@ async function load() {
 async function loadConnectedChannels() {
   try {
     const { data } = await api.get('/integrations/channels')
-    connectedChannels.value = data.filter((c) => c.status === 'active').map((c) => c.channel)
+    connectedChannels.value = data
+      .filter((entry) => entry.status === 'active' && entry.channel !== 'lucrofrete')
+      .map((entry) => entry.channel)
   } catch {
-    // dropdown de canal fica só com "Todos" — não bloqueia o resto da tela
+    // O endpoint agregado continua sendo a fonte das colunas se esta leitura falhar.
   }
 }
 
@@ -69,20 +116,87 @@ function goToPage(newPage) {
   load()
 }
 
-// Sem regra pra esse produto/canal = sem indicador (não inventamos um
-// limite default). Com regra: só distinguimos normal/crítico — "atenção"
-// exigiria um segundo limiar que StockAlertRule não tem hoje (só
-// min_threshold), então não foi inventado.
+function channelLabel(channelName) {
+  return CHANNEL_LABELS[channelName] || channelName
+}
+
+function channelEntry(product, channelName) {
+  return product.channels?.find((entry) => entry.channel === channelName)
+}
+
+function cellKey(product, channelName) {
+  return `${product.id}:${channelName}`
+}
+
+function toggleSort(channelName) {
+  if (sortChannel.value === channelName) {
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortChannel.value = channelName
+    sortDirection.value = 'asc'
+  }
+}
+
+function sortIndicator(channelName) {
+  if (sortChannel.value !== channelName) return ''
+  return sortDirection.value === 'asc' ? '↑' : '↓'
+}
+
 function channelStatus(entry) {
-  if (entry.min_threshold == null) return 'unknown'
+  if (!entry || entry.min_threshold == null) return 'unknown'
   return Number(entry.stock_qty) <= Number(entry.min_threshold) ? 'critical' : 'normal'
 }
 
-function badgeClass(entry) {
+function valueClass(entry) {
   const status = channelStatus(entry)
-  if (status === 'critical') return 'bg-red-100 text-red-700'
-  if (status === 'normal') return 'bg-emerald-100 text-emerald-700'
-  return 'bg-slate-100 text-slate-600'
+  if (status === 'critical') return 'text-red-700'
+  if (status === 'normal') return 'text-emerald-700'
+  return 'text-slate-700'
+}
+
+function startEdit(product, channelName) {
+  const entry = channelEntry(product, channelName)
+  if (!auth.isAdmin || !entry?.listing_id || updatingKey.value) return
+
+  editingKey.value = cellKey(product, channelName)
+  editValue.value = entry.stock_qty == null ? '' : String(entry.stock_qty)
+}
+
+function cancelEdit() {
+  if (updatingKey.value) return
+  editingKey.value = null
+  editValue.value = ''
+}
+
+async function confirmEdit(product, channelName) {
+  const key = cellKey(product, channelName)
+  if (editingKey.value !== key || updatingKey.value === key) return
+
+  const entry = channelEntry(product, channelName)
+  const requestedQuantity = editValue.value
+  if (!entry?.listing_id || requestedQuantity === '' || Number.isNaN(Number(requestedQuantity)) || Number(requestedQuantity) < 0) {
+    cancelEdit()
+    toast.error('Informe uma quantidade maior ou igual a zero.')
+    return
+  }
+
+  editingKey.value = null
+  updatingKey.value = key
+
+  try {
+    const { data } = await api.patch(`/channel_product_listings/${entry.listing_id}`, {
+      quantity: requestedQuantity,
+    })
+    const updatedListing = data.channel_product_listing || data
+    entry.stock_qty = updatedListing.stock_qty
+  } catch (e) {
+    // entry.stock_qty was not changed before the request, so the old value is
+    // naturally restored in the cell when the remote write fails.
+    toast.error(e.response?.data?.error || 'Não foi possível atualizar o estoque no canal.')
+  } finally {
+    updatingKey.value = null
+    editValue.value = ''
+  }
 }
 </script>
 
@@ -103,7 +217,7 @@ function badgeClass(entry) {
         @change="onChannelChange"
       >
         <option value="">Todos os canais</option>
-        <option v-for="c in connectedChannels" :key="c" :value="c">{{ CHANNEL_LABELS[c] || c }}</option>
+        <option v-for="c in connectedChannels" :key="c" :value="c">{{ channelLabel(c) }}</option>
       </select>
     </div>
 
@@ -118,34 +232,70 @@ function badgeClass(entry) {
             <th class="px-4 py-2 text-left font-medium text-slate-600">SKU</th>
             <th class="px-4 py-2 text-left font-medium text-slate-600">Nome</th>
             <th class="px-4 py-2 text-right font-medium text-slate-600">Estoque idworks</th>
-            <th class="px-4 py-2 text-left font-medium text-slate-600">Canais</th>
+            <th v-for="channelName in channels" :key="channelName" class="px-4 py-2 text-right font-medium text-slate-600">
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 whitespace-nowrap hover:text-indigo-700"
+                :title="`Ordenar por estoque ${channelLabel(channelName)}`"
+                @click="toggleSort(channelName)"
+              >
+                {{ channelLabel(channelName) }}
+                <span class="text-indigo-500">{{ sortIndicator(channelName) }}</span>
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr v-if="loading">
-            <td colspan="4" class="px-4 py-6 text-center text-slate-400">Carregando...</td>
+            <td :colspan="3 + channels.length" class="px-4 py-6 text-center text-slate-400">Carregando...</td>
           </tr>
           <tr v-else-if="products.length === 0">
-            <td colspan="4" class="px-4 py-6 text-center text-slate-400">Nenhum produto encontrado.</td>
+            <td :colspan="3 + channels.length" class="px-4 py-6 text-center text-slate-400">Nenhum produto encontrado.</td>
           </tr>
           <template v-else>
-            <tr v-for="product in products" :key="product.id">
+            <tr v-for="product in displayedProducts" :key="product.id">
               <td class="px-4 py-2 text-slate-500">{{ product.sku }}</td>
               <td class="px-4 py-2 text-slate-800">{{ product.name }}</td>
               <td class="px-4 py-2 text-right tabular-nums text-slate-700">{{ product.qty_available ?? '—' }}</td>
-              <td class="px-4 py-2">
-                <div class="flex flex-wrap gap-1">
+              <td v-for="channelName in channels" :key="channelName" class="px-4 py-2 text-right tabular-nums">
+                <template v-if="channelEntry(product, channelName)">
                   <span
-                    v-for="entry in product.channels"
-                    :key="entry.channel"
-                    class="rounded-full px-2 py-0.5 text-xs font-medium"
-                    :class="badgeClass(entry)"
-                    :title="entry.min_threshold != null ? `mínimo configurado: ${entry.min_threshold}` : 'sem regra de alerta configurada'"
+                    v-if="updatingKey === cellKey(product, channelName)"
+                    class="inline-flex items-center gap-1 text-xs text-indigo-600"
                   >
-                    {{ CHANNEL_LABELS[entry.channel] || entry.channel }}: {{ entry.stock_qty }}
+                    <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                    Atualizando...
                   </span>
-                  <span v-if="!product.channels?.length" class="text-slate-300">—</span>
-                </div>
+                  <input
+                    v-else-if="editingKey === cellKey(product, channelName)"
+                    v-model="editValue"
+                    type="number"
+                    min="0"
+                    step="any"
+                    class="w-24 rounded border border-indigo-400 px-2 py-1 text-right tabular-nums text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                    aria-label="Nova quantidade"
+                    @keydown.enter.prevent="confirmEdit(product, channelName)"
+                    @keydown.esc="cancelEdit"
+                    @blur="confirmEdit(product, channelName)"
+                  />
+                  <button
+                    v-else-if="auth.isAdmin"
+                    type="button"
+                    class="rounded px-1.5 py-0.5 font-medium underline decoration-dotted underline-offset-2 hover:bg-indigo-50"
+                    :class="valueClass(channelEntry(product, channelName))"
+                    :title="`Editar estoque ${channelLabel(channelName)}`"
+                    @click="startEdit(product, channelName)"
+                  >
+                    {{ channelEntry(product, channelName).stock_qty ?? '—' }}
+                  </button>
+                  <span v-else :class="valueClass(channelEntry(product, channelName))">
+                    {{ channelEntry(product, channelName).stock_qty ?? '—' }}
+                  </span>
+                </template>
+                <span v-else class="text-slate-300">—</span>
               </td>
             </tr>
           </template>
