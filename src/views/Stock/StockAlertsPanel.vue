@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { formatDateTime, formatStockQty } from '@/lib/format'
+import StockProductDetailModal from './StockProductDetailModal.vue'
 
 const CHANNEL_LABELS = {
   yampi: 'Yampi',
@@ -21,6 +22,10 @@ const STATUS_LABELS = {
   executed: 'Executado',
   dismissed: 'Dispensado',
   skipped_duplicate: 'Duplicado (ignorado)',
+  // Pool recuperou sozinho (sync do idworks, ou canal com menos alocado) —
+  // ver StockAlert::STATUSES no backend. Distinto de "executado": nenhuma
+  // reposição rodou, o alerta só deixou de ser necessário.
+  resolved: 'Resolvido',
 }
 
 // "Abertos" (o default) agrupa os 4 status operacionalmente relevantes —
@@ -44,6 +49,7 @@ const errorMessage = ref('')
 const statusFilter = ref('open')
 const page = ref(1)
 const workingId = ref(null)
+const detailProductId = ref(null)
 
 async function load() {
   loading.value = true
@@ -74,11 +80,19 @@ function goToPage(newPage) {
 }
 
 function statusBadgeClass(status) {
-  if (status === 'executed') return 'bg-emerald-100 text-emerald-700'
+  if (status === 'executed' || status === 'resolved') return 'bg-emerald-100 text-emerald-700'
   if (status === 'failed') return 'bg-red-100 text-red-700'
   if (status === 'insufficient_reserve') return 'bg-amber-100 text-amber-700'
   if (status === 'dismissed' || status === 'skipped_duplicate') return 'bg-slate-100 text-slate-500'
   return 'bg-indigo-100 text-indigo-700' // pending / awaiting_confirmation
+}
+
+function openDetail(alert) {
+  detailProductId.value = alert.product_id
+}
+
+function closeDetail() {
+  detailProductId.value = null
 }
 
 // Dismiss vale pra qualquer status "aberto" (mesma regra do backend —
@@ -91,13 +105,13 @@ function canDismiss(alert) {
 async function confirmAlert(alert) {
   workingId.value = alert.id
   try {
+    // Não executa na hora — cria a StockReplenishmentExecution e devolve
+    // logo em seguida; StockAlerts::ExecuteReplenishmentJob faz a escrita
+    // real no canal de forma assíncrona (ver o backend). O status muda pra
+    // "pendente" aqui; recarregar mais tarde mostra executado/falhou.
     await api.post(`/stock_alerts/${alert.id}/confirm`)
-    toast.success('Reposição executada.')
+    toast.success('Reposição enfileirada — acompanhe o status nesta lista.')
   } catch (e) {
-    // Um 422 aqui normalmente significa que o backend já marcou o alerta
-    // como "failed" (ex: credencial do canal rejeitada) — recarregar
-    // mostra esse novo status em vez de deixar a linha travada em
-    // "Aguardando confirmação".
     toast.error(e.response?.data?.error || 'Não foi possível confirmar a reposição.')
   } finally {
     await load()
@@ -106,7 +120,11 @@ async function confirmAlert(alert) {
 }
 
 async function dismissAlert(alert) {
-  if (!window.confirm(`Dispensar o alerta de ${alert.product_sku} (${CHANNEL_LABELS[alert.channel] || alert.channel})?`)) return
+  // alert.channel pode ser null — Fase 2: alerta é por produto, o canal só
+  // aparece quando havia um canal de maior prioridade configurado no
+  // momento do disparo (ver StockAlerts::EvaluationService#resolve_target).
+  const channelSuffix = alert.channel ? ` (${CHANNEL_LABELS[alert.channel] || alert.channel})` : ''
+  if (!window.confirm(`Dispensar o alerta de ${alert.product_sku}${channelSuffix}?`)) return
 
   workingId.value = alert.id
   try {
@@ -147,7 +165,7 @@ async function dismissAlert(alert) {
           <tr>
             <th class="px-4 py-2 text-left font-medium text-slate-600">Produto</th>
             <th class="px-4 py-2 text-left font-medium text-slate-600">Canal</th>
-            <th class="px-4 py-2 text-right font-medium text-slate-600">Saldo no disparo</th>
+            <th class="px-4 py-2 text-right font-medium text-slate-600">Estoque livre no disparo</th>
             <th class="px-4 py-2 text-right font-medium text-slate-600">Reposição sugerida</th>
             <th class="px-4 py-2 text-left font-medium text-slate-600">Status</th>
             <th class="px-4 py-2 text-left font-medium text-slate-600">Quando</th>
@@ -163,8 +181,17 @@ async function dismissAlert(alert) {
           </tr>
           <template v-else>
             <tr v-for="alert in alerts" :key="alert.id">
-              <td class="px-4 py-2 text-slate-700">{{ alert.product_sku }}</td>
-              <td class="px-4 py-2 text-slate-600">{{ CHANNEL_LABELS[alert.channel] || alert.channel }}</td>
+              <td class="px-4 py-2">
+                <button
+                  type="button"
+                  class="text-slate-700 underline decoration-dotted underline-offset-2 hover:text-indigo-700"
+                  title="Ver detalhe do produto"
+                  @click="openDetail(alert)"
+                >
+                  {{ alert.product_sku }}
+                </button>
+              </td>
+              <td class="px-4 py-2 text-slate-600">{{ alert.channel ? (CHANNEL_LABELS[alert.channel] || alert.channel) : '—' }}</td>
               <td class="px-4 py-2 text-right tabular-nums text-slate-700">{{ formatStockQty(alert.qty_at_trigger) ?? '—' }}</td>
               <td class="px-4 py-2 text-right tabular-nums text-slate-700">{{ formatStockQty(alert.suggested_replenishment_qty) ?? '—' }}</td>
               <td class="px-4 py-2">
@@ -227,5 +254,7 @@ async function dismissAlert(alert) {
         </button>
       </div>
     </div>
+
+    <StockProductDetailModal v-if="detailProductId" :product-id="detailProductId" @close="closeDetail" />
   </div>
 </template>

@@ -15,12 +15,6 @@ const submitting = ref(false)
 const editingRule = ref(null)
 const showModal = ref(false)
 
-const CHANNEL_LABEL = {
-  yampi: 'Yampi',
-  shopify: 'Shopify',
-  tiktok: 'TikTok Shop',
-}
-
 const AUTOMATION_LABEL = {
   manual: 'Manual',
   semi_automatic: 'Semi-automático',
@@ -75,7 +69,7 @@ async function saveRule(payload) {
 }
 
 async function removeRule(rule) {
-  if (!window.confirm(`Remover a regra de estoque de ${rule.product_sku} (${CHANNEL_LABEL[rule.channel] || rule.channel})?`)) return
+  if (!window.confirm(`Remover a regra de estoque de ${rule.product_sku}?`)) return
 
   try {
     await api.delete(`/stock_alert_rules/${rule.id}`)
@@ -97,8 +91,9 @@ onMounted(() => {
       <div>
         <h3 class="text-sm font-semibold text-slate-900">Alertas de estoque</h3>
         <p class="mt-1 text-xs text-slate-400">
-          Defina, por produto e canal, quando disparar um alerta de estoque baixo e se a reposição deve ser manual,
-          confirmada por um administrador ou automática. Consulte o saldo e os alertas em aberto na aba Estoque.
+          Defina, por produto, quando disparar um alerta de estoque baixo e se a reposição deve ser manual,
+          confirmada por um administrador ou automática. A reposição automática usa o canal de maior prioridade
+          configurada. Consulte o saldo e os alertas em aberto na aba Estoque.
         </p>
       </div>
       <button
@@ -121,7 +116,6 @@ onMounted(() => {
           <thead class="sticky top-0 bg-white">
             <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <th class="pb-2 pr-3 font-semibold">Produto</th>
-              <th class="pb-2 pr-3 font-semibold">Canal</th>
               <th class="pb-2 pr-3 text-right font-semibold">Mínimo</th>
               <th class="pb-2 pr-3 text-right font-semibold">Alvo</th>
               <th class="pb-2 pr-3 font-semibold">Automação</th>
@@ -132,7 +126,6 @@ onMounted(() => {
           <tbody>
             <tr v-for="rule in rules" :key="rule.id" class="border-t border-slate-100">
               <td class="py-2 pr-3 text-slate-700">{{ rule.product_sku }}</td>
-              <td class="py-2 pr-3 text-slate-600">{{ CHANNEL_LABEL[rule.channel] || rule.channel }}</td>
               <td class="py-2 pr-3 text-right tabular-nums text-slate-600">{{ formatStockQty(rule.min_threshold) ?? '—' }}</td>
               <td class="py-2 pr-3 text-right tabular-nums text-slate-600">{{ formatStockQty(rule.target_level) ?? '—' }}</td>
               <td class="py-2 pr-3 text-slate-600">{{ AUTOMATION_LABEL[rule.automation_level] || rule.automation_level }}</td>

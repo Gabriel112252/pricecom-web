@@ -9,12 +9,6 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save'])
 
-const CHANNELS = [
-  { value: 'yampi', label: 'Yampi' },
-  { value: 'shopify', label: 'Shopify' },
-  { value: 'tiktok', label: 'TikTok Shop' },
-]
-
 const AUTOMATION_LEVELS = [
   { value: 'manual', label: 'Manual — só notifica' },
   { value: 'semi_automatic', label: 'Semi-automático — aguarda confirmação' },
@@ -24,7 +18,6 @@ const AUTOMATION_LEVELS = [
 function blankForm() {
   return {
     product_id: '',
-    channel: 'yampi',
     min_threshold: 0,
     target_level: '',
     automation_level: 'manual',
@@ -51,10 +44,11 @@ watch(
 
 const isEditing = computed(() => !!props.rule?.id)
 
-// Produto e canal identificam a regra (índice único no backend) — trocar
-// qualquer um dos dois na edição criaria uma regra "diferente" sem querer,
-// então ficam travados depois de criada, mesmo padrão de "SKU" travado em
-// outras telas deste projeto quando o campo é parte da identidade do registro.
+// Produto identifica a regra (índice único no backend, uma regra por
+// produto — Fase 2) — trocar o produto na edição criaria uma regra
+// "diferente" sem querer, então fica travado depois de criada, mesmo
+// padrão de "SKU" travado em outras telas deste projeto quando o campo é
+// parte da identidade do registro.
 const identityLocked = computed(() => isEditing.value)
 
 async function loadProducts() {
@@ -95,28 +89,13 @@ function submit() {
               <option v-for="p in products" :key="p.id" :value="p.id">{{ p.sku }} — {{ p.name }}</option>
             </select>
           </label>
-          <label class="text-sm">
-            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Canal</span>
-            <select
-              v-model="form.channel"
-              :disabled="identityLocked"
-              class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-            >
-              <option v-for="c in CHANNELS" :key="c.value" :value="c.value">{{ c.label }}</option>
-            </select>
-          </label>
-          <label class="text-sm">
+          <label class="col-span-2 text-sm">
             <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Automação</span>
             <select v-model="form.automation_level" class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm">
               <option v-for="a in AUTOMATION_LEVELS" :key="a.value" :value="a.value">{{ a.label }}</option>
             </select>
           </label>
         </div>
-
-        <p v-if="form.channel === 'tiktok'" class="rounded-lg bg-amber-50 p-2 text-xs text-amber-700">
-          TikTok Shop ainda não tem escrita automática de estoque — mesmo com automação "automático", esta regra só
-          vai notificar (equivalente a "manual").
-        </p>
 
         <div class="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
           <label class="text-sm">
@@ -129,8 +108,9 @@ function submit() {
           </label>
         </div>
         <p class="text-xs text-slate-400">
-          Alerta dispara quando o saldo no canal ficar igual ou abaixo do limite mínimo; a reposição sugerida tenta
-          levar o saldo até o nível alvo, limitada ao estoque livre no idworks.
+          Alerta dispara quando o estoque livre do produto (idworks menos o que já está alocado em cada canal) ficar
+          igual ou abaixo do limite mínimo; a reposição automática, quando habilitada, escreve no canal de maior
+          prioridade configurada para o produto, até o nível alvo, limitada ao estoque livre.
         </p>
 
         <label class="flex items-center gap-2 border-t border-slate-100 pt-4 text-sm text-slate-700">
