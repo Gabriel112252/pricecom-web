@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { formatStockQty } from '@/lib/format'
+import StockProductDetailModal from './StockProductDetailModal.vue'
 
 const CHANNEL_LABELS = {
   yampi: 'Yampi',
@@ -24,22 +25,17 @@ const channel = ref('')
 const connectedChannels = ref([])
 const activeChannels = ref(null)
 const page = ref(1)
-const sortChannel = ref(null)
+const sortActive = ref(false)
 const sortDirection = ref('asc')
-const editingKey = ref(null)
+const editingId = ref(null)
 const editValue = ref('')
-const updatingKey = ref(null)
+const updatingId = ref(null)
+const detailProductId = ref(null)
+
+const isChannelView = computed(() => !!channel.value)
 
 const channels = computed(() => {
-  const listingChannels = new Set(
-    products.value.flatMap((product) => (product.channels || []).map((entry) => entry.channel)),
-  )
-  // The aggregate endpoint is authoritative: a stale listing from a
-  // disconnected channel must not resurrect a column. The fallback only
-  // supports older API responses that predate active_channels.
-  const configuredChannels = activeChannels.value === null ? connectedChannels.value : activeChannels.value
-  const source = configuredChannels.length || activeChannels.value !== null ? configuredChannels : [...listingChannels]
-
+  const source = activeChannels.value ?? connectedChannels.value
   return [...new Set(source)].sort((a, b) => channelLabel(a).localeCompare(channelLabel(b), 'pt-BR'))
 })
 
@@ -51,8 +47,8 @@ async function load() {
       params: {
         q: search.value || undefined,
         channel: channel.value || undefined,
-        sort_by: sortChannel.value || undefined,
-        sort_dir: sortChannel.value ? sortDirection.value : undefined,
+        sort_by: isChannelView.value && sortActive.value ? channel.value : undefined,
+        sort_dir: isChannelView.value && sortActive.value ? sortDirection.value : undefined,
         page: page.value,
         per_page: 50,
       },
@@ -94,6 +90,9 @@ function onSearchInput() {
 
 function onChannelChange() {
   page.value = 1
+  // A ordenação anterior pode ter sido por outro canal — nem sempre faz
+  // sentido na nova visão (ex: Visão Central não tem coluna ordenável).
+  sortActive.value = false
   load()
 }
 
@@ -107,83 +106,105 @@ function channelLabel(channelName) {
   return CHANNEL_LABELS[channelName] || channelName
 }
 
-function channelEntry(product, channelName) {
-  return product.channels?.find((entry) => entry.channel === channelName)
-}
-
-function cellKey(product, channelName) {
-  return `${product.id}:${channelName}`
-}
-
-function toggleSort(channelName) {
-  if (sortChannel.value === channelName) {
+function toggleSort() {
+  if (sortActive.value) {
     sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
   } else {
-    sortChannel.value = channelName
+    sortActive.value = true
     sortDirection.value = 'asc'
   }
   page.value = 1
   load()
 }
 
-function sortIndicator(channelName) {
-  if (sortChannel.value !== channelName) return ''
+function sortIndicator() {
+  if (!sortActive.value) return ''
   return sortDirection.value === 'asc' ? '↑' : '↓'
 }
 
-function channelStatus(entry) {
-  if (!entry || entry.min_threshold == null) return 'unknown'
-  return Number(entry.stock_qty) <= Number(entry.min_threshold) ? 'critical' : 'normal'
+// Canais: badge resumido em vez de uma coluna por canal — ver
+// StockOverviewController#central_row_json. Divergência tem prioridade
+// visual sobre a contagem neutra.
+function channelsSummaryLabel(product) {
+  const summary = product.channels_summary
+  if (!summary || summary.count === 0) return '—'
+  if (summary.divergent_count > 0) {
+    return summary.divergent_count === 1 ? '1 divergente' : `${summary.divergent_count} divergentes`
+  }
+  if (summary.count <= 3) return summary.channels.map(channelLabel).join(', ')
+  return `${summary.count} canais`
 }
 
-function valueClass(entry) {
-  const status = channelStatus(entry)
-  if (status === 'critical') return 'text-red-700'
-  if (status === 'normal') return 'text-emerald-700'
-  return 'text-slate-700'
+function channelsSummaryClass(product) {
+  const summary = product.channels_summary
+  if (!summary || summary.count === 0) return 'bg-slate-100 text-slate-400'
+  if (summary.divergent_count > 0) return 'bg-amber-100 text-amber-700'
+  return 'bg-slate-100 text-slate-600'
 }
 
-function startEdit(product, channelName) {
-  const entry = channelEntry(product, channelName)
-  if (!auth.isAdmin || !entry?.listing_id || updatingKey.value) return
+function differenceClass(product) {
+  if (product.difference == null) return 'text-slate-300'
+  return product.divergent ? 'text-amber-700' : 'text-slate-700'
+}
 
-  editingKey.value = cellKey(product, channelName)
-  editValue.value = formatStockQty(entry.stock_qty) ?? ''
+function formatDifference(value) {
+  if (value == null) return '—'
+  const formatted = formatStockQty(value)
+  if (formatted == null) return '—'
+  return Number(value) > 0 ? `+${formatted}` : formatted
+}
+
+function openDetail(product) {
+  detailProductId.value = product.id
+}
+
+function closeDetail() {
+  detailProductId.value = null
+}
+
+function startEdit(product) {
+  if (!auth.isAdmin || !product.listing_id || updatingId.value) return
+
+  editingId.value = product.id
+  editValue.value = formatStockQty(product.channel_stock_qty) ?? ''
 }
 
 function cancelEdit() {
-  if (updatingKey.value) return
-  editingKey.value = null
+  if (updatingId.value) return
+  editingId.value = null
   editValue.value = ''
 }
 
-async function confirmEdit(product, channelName) {
-  const key = cellKey(product, channelName)
-  if (editingKey.value !== key || updatingKey.value === key) return
+async function confirmEdit(product) {
+  if (editingId.value !== product.id || updatingId.value === product.id) return
 
-  const entry = channelEntry(product, channelName)
   const requestedQuantity = editValue.value
-  if (!entry?.listing_id || requestedQuantity === '' || Number.isNaN(Number(requestedQuantity)) || Number(requestedQuantity) < 0) {
+  if (!product.listing_id || requestedQuantity === '' || Number.isNaN(Number(requestedQuantity)) || Number(requestedQuantity) < 0) {
     cancelEdit()
     toast.error('Informe uma quantidade maior ou igual a zero.')
     return
   }
 
-  editingKey.value = null
-  updatingKey.value = key
+  editingId.value = null
+  updatingId.value = product.id
 
   try {
-    const { data } = await api.patch(`/channel_product_listings/${entry.listing_id}`, {
+    const { data } = await api.patch(`/channel_product_listings/${product.listing_id}`, {
       quantity: requestedQuantity,
     })
     const updatedListing = data.channel_product_listing || data
-    entry.stock_qty = updatedListing.stock_qty
+    product.channel_stock_qty = updatedListing.stock_qty
+    // Atualização otimista local com a mesma tolerância (0) do backend —
+    // ver StockOverviewController::DIVERGENCE_TOLERANCE. Um reload da
+    // página busca o valor autoritativo se essa tolerância mudar.
+    if (product.has_origin) {
+      product.difference = Number(updatedListing.stock_qty) - Number(product.origin_qty_available)
+      product.divergent = product.difference !== 0
+    }
   } catch (e) {
-    // entry.stock_qty was not changed before the request, so the old value is
-    // naturally restored in the cell when the remote write fails.
     toast.error(e.response?.data?.error || 'Não foi possível atualizar o estoque no canal.')
   } finally {
-    updatingKey.value = null
+    updatingId.value = null
     editValue.value = ''
   }
 }
@@ -221,95 +242,154 @@ async function confirmEdit(product, channelName) {
       {{ errorMessage }}
     </div>
 
+    <!-- Visão Central: sem filtro de canal, uma linha por produto com o
+         estoque de origem (idworks) e um resumo dos canais. Clicar na
+         linha abre o detalhe por canal. -->
+    <div v-else-if="!isChannelView" class="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50">
+          <tr>
+            <th class="px-4 py-2 text-left font-medium text-slate-600">SKU</th>
+            <th class="px-4 py-2 text-left font-medium text-slate-600">Nome</th>
+            <th class="px-4 py-2 text-right font-medium text-slate-600">Estoque</th>
+            <th class="px-4 py-2 text-left font-medium text-slate-600">Canais</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr v-if="loading">
+            <td colspan="4" class="px-4 py-6 text-center text-slate-400">Carregando...</td>
+          </tr>
+          <tr v-else-if="products.length === 0">
+            <td colspan="4" class="px-4 py-6 text-center text-slate-400">Nenhum produto encontrado.</td>
+          </tr>
+          <template v-else>
+            <tr
+              v-for="product in products"
+              :key="product.id"
+              class="cursor-pointer hover:bg-slate-50"
+              @click="openDetail(product)"
+            >
+              <td class="px-4 py-2 text-slate-500">{{ product.sku }}</td>
+              <td class="px-4 py-2 text-slate-800">{{ product.name }}</td>
+              <td class="px-4 py-2 text-right tabular-nums text-slate-700">
+                <span v-if="product.has_origin">{{ formatStockQty(product.origin_qty_available) ?? '—' }}</span>
+                <span
+                  v-else
+                  class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+                  title="Produto sem vínculo com o idworks — sem estoque de origem confiável."
+                >
+                  Sem ERP
+                </span>
+              </td>
+              <td class="px-4 py-2">
+                <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium" :class="channelsSummaryClass(product)">
+                  {{ channelsSummaryLabel(product) }}
+                </span>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Visão por canal: só produtos com listing nesse canal (filtro
+         EXISTS já aplicado no backend). Compara direto com a origem. -->
     <div v-else class="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
       <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50">
           <tr>
             <th class="px-4 py-2 text-left font-medium text-slate-600">SKU</th>
             <th class="px-4 py-2 text-left font-medium text-slate-600">Nome</th>
-            <th class="px-4 py-2 text-right font-medium text-slate-600">Estoque idworks</th>
-            <th v-for="channelName in channels" :key="channelName" class="px-4 py-2 text-right font-medium text-slate-600">
+            <th class="px-4 py-2 text-right font-medium text-slate-600">
               <button
                 type="button"
                 class="inline-flex items-center gap-1 whitespace-nowrap hover:text-indigo-700"
-                :title="`Ordenar por estoque ${channelLabel(channelName)}`"
-                @click="toggleSort(channelName)"
+                :title="`Ordenar por estoque ${channelLabel(channel)}`"
+                @click="toggleSort"
               >
-                {{ channelLabel(channelName) }}
-                <span class="text-indigo-500">{{ sortIndicator(channelName) }}</span>
+                Estoque {{ channelLabel(channel) }}
+                <span class="text-indigo-500">{{ sortIndicator() }}</span>
               </button>
             </th>
+            <th class="px-4 py-2 text-right font-medium text-slate-600">Estoque de origem</th>
+            <th class="px-4 py-2 text-right font-medium text-slate-600">Diferença</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr v-if="loading">
-            <td :colspan="3 + channels.length" class="px-4 py-6 text-center text-slate-400">Carregando...</td>
+            <td colspan="5" class="px-4 py-6 text-center text-slate-400">Carregando...</td>
           </tr>
           <tr v-else-if="products.length === 0">
-            <td :colspan="3 + channels.length" class="px-4 py-6 text-center text-slate-400">Nenhum produto encontrado.</td>
+            <td colspan="5" class="px-4 py-6 text-center text-slate-400">Nenhum produto encontrado neste canal.</td>
           </tr>
           <template v-else>
             <tr v-for="product in products" :key="product.id">
               <td class="px-4 py-2 text-slate-500">{{ product.sku }}</td>
               <td class="px-4 py-2 text-slate-800">{{ product.name }}</td>
-              <td class="px-4 py-2 text-right tabular-nums text-slate-700">{{ formatStockQty(product.qty_available) ?? '—' }}</td>
-              <td v-for="channelName in channels" :key="channelName" class="px-4 py-2 text-right tabular-nums">
-                <template v-if="channelEntry(product, channelName)">
-                  <span
-                    v-if="updatingKey === cellKey(product, channelName)"
-                    class="inline-flex items-center gap-1 text-xs text-indigo-600"
-                  >
-                    <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                    </svg>
-                    Atualizando...
-                  </span>
-                  <span v-else-if="editingKey === cellKey(product, channelName)" class="inline-flex items-center gap-1">
-                    <input
-                      v-model="editValue"
-                      type="number"
-                      min="0"
-                      step="any"
-                      class="w-20 rounded border border-indigo-400 px-2 py-1 text-right tabular-nums text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                      aria-label="Nova quantidade"
-                      @keydown.enter.prevent="confirmEdit(product, channelName)"
-                      @keydown.esc.prevent="cancelEdit"
-                    />
-                    <button
-                      type="button"
-                      class="rounded p-1 text-emerald-600 hover:bg-emerald-50"
-                      title="Confirmar"
-                      aria-label="Confirmar nova quantidade"
-                      @click="confirmEdit(product, channelName)"
-                    >
-                      ✓
-                    </button>
-                    <button
-                      type="button"
-                      class="rounded p-1 text-red-600 hover:bg-red-50"
-                      title="Cancelar"
-                      aria-label="Cancelar edição"
-                      @click="cancelEdit"
-                    >
-                      ✕
-                    </button>
-                  </span>
+              <td class="px-4 py-2 text-right tabular-nums">
+                <span
+                  v-if="updatingId === product.id"
+                  class="inline-flex items-center gap-1 text-xs text-indigo-600"
+                >
+                  <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                  Atualizando...
+                </span>
+                <span v-else-if="editingId === product.id" class="inline-flex items-center gap-1">
+                  <input
+                    v-model="editValue"
+                    type="number"
+                    min="0"
+                    step="any"
+                    class="w-20 rounded border border-indigo-400 px-2 py-1 text-right tabular-nums text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                    aria-label="Nova quantidade"
+                    @keydown.enter.prevent="confirmEdit(product)"
+                    @keydown.esc.prevent="cancelEdit"
+                  />
                   <button
-                    v-else-if="auth.isAdmin"
                     type="button"
-                    class="rounded px-1.5 py-0.5 font-medium underline decoration-dotted underline-offset-2 hover:bg-indigo-50"
-                    :class="valueClass(channelEntry(product, channelName))"
-                    :title="`Editar estoque ${channelLabel(channelName)}`"
-                    @click="startEdit(product, channelName)"
+                    class="rounded p-1 text-emerald-600 hover:bg-emerald-50"
+                    title="Confirmar"
+                    aria-label="Confirmar nova quantidade"
+                    @click="confirmEdit(product)"
                   >
-                    {{ formatStockQty(channelEntry(product, channelName).stock_qty) ?? '—' }}
+                    ✓
                   </button>
-                  <span v-else :class="valueClass(channelEntry(product, channelName))">
-                    {{ formatStockQty(channelEntry(product, channelName).stock_qty) ?? '—' }}
-                  </span>
-                </template>
-                <span v-else class="text-slate-300">—</span>
+                  <button
+                    type="button"
+                    class="rounded p-1 text-red-600 hover:bg-red-50"
+                    title="Cancelar"
+                    aria-label="Cancelar edição"
+                    @click="cancelEdit"
+                  >
+                    ✕
+                  </button>
+                </span>
+                <button
+                  v-else-if="auth.isAdmin"
+                  type="button"
+                  class="rounded px-1.5 py-0.5 font-medium text-slate-700 underline decoration-dotted underline-offset-2 hover:bg-indigo-50"
+                  title="Editar estoque neste canal"
+                  @click="startEdit(product)"
+                >
+                  {{ formatStockQty(product.channel_stock_qty) ?? '—' }}
+                </button>
+                <span v-else class="text-slate-700">{{ formatStockQty(product.channel_stock_qty) ?? '—' }}</span>
+              </td>
+              <td class="px-4 py-2 text-right tabular-nums text-slate-700">
+                <span v-if="product.has_origin">{{ formatStockQty(product.origin_qty_available) ?? '—' }}</span>
+                <span
+                  v-else
+                  class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+                  title="Produto sem vínculo com o idworks — sem estoque de origem confiável."
+                >
+                  Sem ERP
+                </span>
+              </td>
+              <td class="px-4 py-2 text-right tabular-nums font-medium" :class="differenceClass(product)">
+                {{ formatDifference(product.difference) }}
               </td>
             </tr>
           </template>
@@ -338,5 +418,7 @@ async function confirmEdit(product, channelName) {
         </button>
       </div>
     </div>
+
+    <StockProductDetailModal v-if="detailProductId" :product-id="detailProductId" @close="closeDetail" />
   </div>
 </template>
