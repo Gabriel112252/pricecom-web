@@ -2,9 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from '@/composables/useToast'
-import { formatStockQty } from '@/lib/format'
+import { formatStockQty, stockDifferenceClass, formatStockDifference } from '@/lib/format'
 import StockProductDetailModal from './StockProductDetailModal.vue'
+import StockChannelSkuRow from './StockChannelSkuRow.vue'
 
 const CHANNEL_LABELS = {
   yampi: 'Yampi',
@@ -15,7 +15,6 @@ const CHANNEL_LABELS = {
 }
 
 const auth = useAuthStore()
-const toast = useToast()
 const products = ref([])
 const meta = ref({})
 const loading = ref(true)
@@ -27,10 +26,11 @@ const activeChannels = ref(null)
 const page = ref(1)
 const sortActive = ref(false)
 const sortDirection = ref('asc')
-const editingId = ref(null)
-const editValue = ref('')
-const updatingId = ref(null)
 const detailProductId = ref(null)
+// Chaves (group_key) dos grupos de produto-pai abertos na Visão por canal —
+// ver StockOverviewController#channel_group_row_json. Reseta a cada load()
+// pra não tentar expandir um grupo que nem existe mais na página atual.
+const expandedGroups = ref(new Set())
 
 const isChannelView = computed(() => !!channel.value)
 
@@ -56,6 +56,7 @@ async function load() {
     products.value = data.products
     activeChannels.value = Array.isArray(data.active_channels) ? data.active_channels : null
     meta.value = data.meta || {}
+    expandedGroups.value = new Set()
   } catch (e) {
     errorMessage.value = e.response?.data?.error || 'Não foi possível carregar o estoque.'
   } finally {
@@ -142,18 +143,6 @@ function channelsSummaryClass(product) {
   return 'bg-slate-100 text-slate-600'
 }
 
-function differenceClass(product) {
-  if (product.difference == null) return 'text-slate-300'
-  return product.divergent ? 'text-amber-700' : 'text-slate-700'
-}
-
-function formatDifference(value) {
-  if (value == null) return '—'
-  const formatted = formatStockQty(value)
-  if (formatted == null) return '—'
-  return Number(value) > 0 ? `+${formatted}` : formatted
-}
-
 function openDetail(product) {
   detailProductId.value = product.id
 }
@@ -162,50 +151,21 @@ function closeDetail() {
   detailProductId.value = null
 }
 
-function startEdit(product) {
-  if (!auth.isAdmin || !product.listing_id || updatingId.value) return
-
-  editingId.value = product.id
-  editValue.value = formatStockQty(product.channel_stock_qty) ?? ''
+// Produto-pai do canal (ver StockOverviewController#channel_group_row_json)
+// — só existe na Visão por canal, e só quando o canal filtrado tem esse
+// conceito (TikTok/Shopify/Yampi com variação real); um "grupo" de 1 SKU
+// já vem achatado pelo backend como linha solo, então isGroup nunca é true
+// pra esse caso.
+function isGroup(row) {
+  return Array.isArray(row.children)
 }
 
-function cancelEdit() {
-  if (updatingId.value) return
-  editingId.value = null
-  editValue.value = ''
-}
-
-async function confirmEdit(product) {
-  if (editingId.value !== product.id || updatingId.value === product.id) return
-
-  const requestedQuantity = editValue.value
-  if (!product.listing_id || requestedQuantity === '' || Number.isNaN(Number(requestedQuantity)) || Number(requestedQuantity) < 0) {
-    cancelEdit()
-    toast.error('Informe uma quantidade maior ou igual a zero.')
-    return
-  }
-
-  editingId.value = null
-  updatingId.value = product.id
-
-  try {
-    const { data } = await api.patch(`/channel_product_listings/${product.listing_id}`, {
-      quantity: requestedQuantity,
-    })
-    const updatedListing = data.channel_product_listing || data
-    product.channel_stock_qty = updatedListing.stock_qty
-    // Atualização otimista local com a mesma tolerância (0) do backend —
-    // ver StockOverviewController::DIVERGENCE_TOLERANCE. Um reload da
-    // página busca o valor autoritativo se essa tolerância mudar.
-    if (product.has_origin) {
-      product.difference = Number(updatedListing.stock_qty) - Number(product.origin_qty_available)
-      product.divergent = product.difference !== 0
-    }
-  } catch (e) {
-    toast.error(e.response?.data?.error || 'Não foi possível atualizar o estoque no canal.')
-  } finally {
-    updatingId.value = null
-    editValue.value = ''
+function toggleGroup(row) {
+  const key = row.group_key
+  if (expandedGroups.value.has(key)) {
+    expandedGroups.value.delete(key)
+  } else {
+    expandedGroups.value.add(key)
   }
 }
 </script>
@@ -323,75 +283,48 @@ async function confirmEdit(product) {
             <td colspan="5" class="px-4 py-6 text-center text-slate-400">Nenhum produto encontrado neste canal.</td>
           </tr>
           <template v-else>
-            <tr v-for="product in products" :key="product.id">
-              <td class="px-4 py-2 text-slate-500">{{ product.sku }}</td>
-              <td class="px-4 py-2 text-slate-800">{{ product.name }}</td>
-              <td class="px-4 py-2 text-right tabular-nums">
-                <span
-                  v-if="updatingId === product.id"
-                  class="inline-flex items-center gap-1 text-xs text-indigo-600"
-                >
-                  <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                  </svg>
-                  Atualizando...
-                </span>
-                <span v-else-if="editingId === product.id" class="inline-flex items-center gap-1">
-                  <input
-                    v-model="editValue"
-                    type="number"
-                    min="0"
-                    step="any"
-                    class="w-20 rounded border border-indigo-400 px-2 py-1 text-right tabular-nums text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                    aria-label="Nova quantidade"
-                    @keydown.enter.prevent="confirmEdit(product)"
-                    @keydown.esc.prevent="cancelEdit"
-                  />
-                  <button
-                    type="button"
-                    class="rounded p-1 text-emerald-600 hover:bg-emerald-50"
-                    title="Confirmar"
-                    aria-label="Confirmar nova quantidade"
-                    @click="confirmEdit(product)"
+            <template v-for="row in products" :key="row.group_key || row.id">
+              <!-- Linha-pai: produto-pai do canal com 2+ SKUs (ver
+                   StockOverviewController#channel_group_row_json). Um grupo
+                   de 1 SKU já vem achatado como linha solo pelo backend, e
+                   cai no ramo v-else abaixo, idêntico ao de antes do
+                   agrupamento existir. -->
+              <tr
+                v-if="isGroup(row)"
+                class="cursor-pointer bg-slate-50 hover:bg-slate-100"
+                @click="toggleGroup(row)"
+              >
+                <td class="px-4 py-2 text-slate-800" colspan="2">
+                  <span class="inline-flex items-center gap-2">
+                    <span class="text-slate-400">{{ expandedGroups.has(row.group_key) ? '▾' : '▸' }}</span>
+                    <span class="font-medium">{{ row.name }}</span>
+                    <span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      {{ row.sku_count }} SKUs
+                    </span>
+                  </span>
+                </td>
+                <td class="px-4 py-2 text-right tabular-nums font-medium text-slate-700">
+                  {{ formatStockQty(row.channel_stock_qty) ?? '—' }}
+                </td>
+                <td class="px-4 py-2 text-right tabular-nums text-slate-700">
+                  <span v-if="row.has_origin">{{ formatStockQty(row.origin_qty_available) ?? '—' }}</span>
+                  <span
+                    v-else
+                    class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+                    title="Nenhum SKU deste grupo tem vínculo com o idworks — sem estoque de origem confiável."
                   >
-                    ✓
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded p-1 text-red-600 hover:bg-red-50"
-                    title="Cancelar"
-                    aria-label="Cancelar edição"
-                    @click="cancelEdit"
-                  >
-                    ✕
-                  </button>
-                </span>
-                <button
-                  v-else-if="auth.isAdmin"
-                  type="button"
-                  class="rounded px-1.5 py-0.5 font-medium text-slate-700 underline decoration-dotted underline-offset-2 hover:bg-indigo-50"
-                  title="Editar estoque neste canal"
-                  @click="startEdit(product)"
-                >
-                  {{ formatStockQty(product.channel_stock_qty) ?? '—' }}
-                </button>
-                <span v-else class="text-slate-700">{{ formatStockQty(product.channel_stock_qty) ?? '—' }}</span>
-              </td>
-              <td class="px-4 py-2 text-right tabular-nums text-slate-700">
-                <span v-if="product.has_origin">{{ formatStockQty(product.origin_qty_available) ?? '—' }}</span>
-                <span
-                  v-else
-                  class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
-                  title="Produto sem vínculo com o idworks — sem estoque de origem confiável."
-                >
-                  Sem ERP
-                </span>
-              </td>
-              <td class="px-4 py-2 text-right tabular-nums font-medium" :class="differenceClass(product)">
-                {{ formatDifference(product.difference) }}
-              </td>
-            </tr>
+                    Sem ERP
+                  </span>
+                </td>
+                <td class="px-4 py-2 text-right tabular-nums font-medium" :class="stockDifferenceClass(row)">
+                  {{ formatStockDifference(row.difference) }}
+                </td>
+              </tr>
+              <template v-if="isGroup(row) && expandedGroups.has(row.group_key)">
+                <StockChannelSkuRow v-for="child in row.children" :key="child.id" :row="child" indent />
+              </template>
+              <StockChannelSkuRow v-if="!isGroup(row)" :row="row" />
+            </template>
           </template>
         </tbody>
       </table>

@@ -46,3 +46,19 @@ export function formatStockQty(value) {
   if (Number.isNaN(num)) return null
   return num.toFixed(3).replace(/\.?0+$/, '')
 }
+
+// Shared by StockBalanceTable.vue (produto-pai / grupo) and
+// StockChannelSkuRow.vue (linha de SKU solo ou filha) — mesmo par
+// {difference, divergent} nos dois formatos de linha que a Visão por canal
+// devolve (ver StockOverviewController#channel_row_json/#channel_group_row_json).
+export function stockDifferenceClass(entry) {
+  if (entry?.difference == null) return 'text-slate-300'
+  return entry.divergent ? 'text-amber-700' : 'text-slate-700'
+}
+
+export function formatStockDifference(value) {
+  if (value == null) return '—'
+  const formatted = formatStockQty(value)
+  if (formatted == null) return '—'
+  return Number(value) > 0 ? `+${formatted}` : formatted
+}
