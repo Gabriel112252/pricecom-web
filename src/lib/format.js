@@ -34,3 +34,15 @@ export function formatDateTime(isoDateTime) {
   if (!isoDateTime) return '—'
   return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(isoDateTime))
 }
+
+// Backend stock quantities (qty_available, stock_qty, min_threshold, etc.)
+// are decimal(12,3) columns, and Rails always serializes BigDecimal with at
+// least one decimal place (3000 -> "3000.0"). Trims that to whole numbers
+// while still showing up to 3 real decimal places when the value isn't
+// integral, without introducing thousands separators.
+export function formatStockQty(value) {
+  if (value === null || value === undefined || value === '') return null
+  const num = Number(value)
+  if (Number.isNaN(num)) return null
+  return num.toFixed(3).replace(/\.?0+$/, '')
+}

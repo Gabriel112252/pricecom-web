@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import { formatStockQty } from '@/lib/format'
 
 const CHANNEL_LABELS = {
   yampi: 'Yampi',
@@ -159,7 +160,7 @@ function startEdit(product, channelName) {
   if (!auth.isAdmin || !entry?.listing_id || updatingKey.value) return
 
   editingKey.value = cellKey(product, channelName)
-  editValue.value = entry.stock_qty == null ? '' : String(entry.stock_qty)
+  editValue.value = formatStockQty(entry.stock_qty) ?? ''
 }
 
 function cancelEdit() {
@@ -263,7 +264,7 @@ async function confirmEdit(product, channelName) {
             <tr v-for="product in displayedProducts" :key="product.id">
               <td class="px-4 py-2 text-slate-500">{{ product.sku }}</td>
               <td class="px-4 py-2 text-slate-800">{{ product.name }}</td>
-              <td class="px-4 py-2 text-right tabular-nums text-slate-700">{{ product.qty_available ?? '—' }}</td>
+              <td class="px-4 py-2 text-right tabular-nums text-slate-700">{{ formatStockQty(product.qty_available) ?? '—' }}</td>
               <td v-for="channelName in channels" :key="channelName" class="px-4 py-2 text-right tabular-nums">
                 <template v-if="channelEntry(product, channelName)">
                   <span
@@ -314,10 +315,10 @@ async function confirmEdit(product, channelName) {
                     :title="`Editar estoque ${channelLabel(channelName)}`"
                     @click="startEdit(product, channelName)"
                   >
-                    {{ channelEntry(product, channelName).stock_qty ?? '—' }}
+                    {{ formatStockQty(channelEntry(product, channelName).stock_qty) ?? '—' }}
                   </button>
                   <span v-else :class="valueClass(channelEntry(product, channelName))">
-                    {{ channelEntry(product, channelName).stock_qty ?? '—' }}
+                    {{ formatStockQty(channelEntry(product, channelName).stock_qty) ?? '—' }}
                   </span>
                 </template>
                 <span v-else class="text-slate-300">—</span>

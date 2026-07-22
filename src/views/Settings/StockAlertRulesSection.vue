@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import { formatStockQty } from '@/lib/format'
 import StockAlertRuleModal from './StockAlertRuleModal.vue'
 
 const auth = useAuthStore()
@@ -132,8 +133,8 @@ onMounted(() => {
             <tr v-for="rule in rules" :key="rule.id" class="border-t border-slate-100">
               <td class="py-2 pr-3 text-slate-700">{{ rule.product_sku }}</td>
               <td class="py-2 pr-3 text-slate-600">{{ CHANNEL_LABEL[rule.channel] || rule.channel }}</td>
-              <td class="py-2 pr-3 text-right tabular-nums text-slate-600">{{ rule.min_threshold }}</td>
-              <td class="py-2 pr-3 text-right tabular-nums text-slate-600">{{ rule.target_level }}</td>
+              <td class="py-2 pr-3 text-right tabular-nums text-slate-600">{{ formatStockQty(rule.min_threshold) ?? '—' }}</td>
+              <td class="py-2 pr-3 text-right tabular-nums text-slate-600">{{ formatStockQty(rule.target_level) ?? '—' }}</td>
               <td class="py-2 pr-3 text-slate-600">{{ AUTOMATION_LABEL[rule.automation_level] || rule.automation_level }}</td>
               <td class="py-2 pr-3">
                 <span v-if="rule.active" class="text-emerald-600">Sim</span>

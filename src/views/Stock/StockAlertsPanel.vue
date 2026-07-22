@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
-import { formatDateTime } from '@/lib/format'
+import { formatDateTime, formatStockQty } from '@/lib/format'
 
 const CHANNEL_LABELS = {
   yampi: 'Yampi',
@@ -165,8 +165,8 @@ async function dismissAlert(alert) {
             <tr v-for="alert in alerts" :key="alert.id">
               <td class="px-4 py-2 text-slate-700">{{ alert.product_sku }}</td>
               <td class="px-4 py-2 text-slate-600">{{ CHANNEL_LABELS[alert.channel] || alert.channel }}</td>
-              <td class="px-4 py-2 text-right tabular-nums text-slate-700">{{ alert.qty_at_trigger }}</td>
-              <td class="px-4 py-2 text-right tabular-nums text-slate-700">{{ alert.suggested_replenishment_qty }}</td>
+              <td class="px-4 py-2 text-right tabular-nums text-slate-700">{{ formatStockQty(alert.qty_at_trigger) ?? '—' }}</td>
+              <td class="px-4 py-2 text-right tabular-nums text-slate-700">{{ formatStockQty(alert.suggested_replenishment_qty) ?? '—' }}</td>
               <td class="px-4 py-2">
                 <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="statusBadgeClass(alert.status)">
                   {{ STATUS_LABELS[alert.status] || alert.status }}

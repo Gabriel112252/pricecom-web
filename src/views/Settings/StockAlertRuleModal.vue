@@ -32,13 +32,20 @@ function blankForm() {
   }
 }
 
-const form = ref(props.rule ? { ...blankForm(), ...props.rule } : blankForm())
+// min_threshold/target_level come from the API as decimal(12,3) strings
+// (ex: "3000.0") — cast to Number so the number input displays a plain
+// value instead of that trailing-decimal string.
+function withNumericThresholds(rule) {
+  return { ...blankForm(), ...rule, min_threshold: Number(rule.min_threshold), target_level: Number(rule.target_level) }
+}
+
+const form = ref(props.rule ? withNumericThresholds(props.rule) : blankForm())
 const products = ref([])
 
 watch(
   () => props.rule,
   (rule) => {
-    form.value = rule ? { ...blankForm(), ...rule } : blankForm()
+    form.value = rule ? withNumericThresholds(rule) : blankForm()
   },
 )
 
