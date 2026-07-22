@@ -43,33 +43,19 @@ const channels = computed(() => {
   return [...new Set(source)].sort((a, b) => channelLabel(a).localeCompare(channelLabel(b), 'pt-BR'))
 })
 
-const displayedProducts = computed(() => {
-  if (!sortChannel.value) return products.value
-
-  const direction = sortDirection.value === 'asc' ? 1 : -1
-  const channelToSort = sortChannel.value
-
-  return [...products.value].sort((left, right) => {
-    const leftEntry = channelEntry(left, channelToSort)
-    const rightEntry = channelEntry(right, channelToSort)
-    const leftValue = leftEntry ? Number(leftEntry.stock_qty) : null
-    const rightValue = rightEntry ? Number(rightEntry.stock_qty) : null
-    const leftMissing = leftValue == null || Number.isNaN(leftValue)
-    const rightMissing = rightValue == null || Number.isNaN(rightValue)
-
-    // Products without a listing for the selected channel always stay last.
-    if (leftMissing !== rightMissing) return leftMissing ? 1 : -1
-    if (!leftMissing && leftValue !== rightValue) return (leftValue - rightValue) * direction
-    return String(left.name || '').localeCompare(String(right.name || ''), 'pt-BR')
-  })
-})
-
 async function load() {
   loading.value = true
   errorMessage.value = ''
   try {
     const { data } = await api.get('/stock_overview', {
-      params: { q: search.value || undefined, channel: channel.value || undefined, page: page.value, per_page: 50 },
+      params: {
+        q: search.value || undefined,
+        channel: channel.value || undefined,
+        sort_by: sortChannel.value || undefined,
+        sort_dir: sortChannel.value ? sortDirection.value : undefined,
+        page: page.value,
+        per_page: 50,
+      },
     })
     products.value = data.products
     activeChannels.value = Array.isArray(data.active_channels) ? data.active_channels : null
@@ -136,6 +122,8 @@ function toggleSort(channelName) {
     sortChannel.value = channelName
     sortDirection.value = 'asc'
   }
+  page.value = 1
+  load()
 }
 
 function sortIndicator(channelName) {
@@ -261,7 +249,7 @@ async function confirmEdit(product, channelName) {
             <td :colspan="3 + channels.length" class="px-4 py-6 text-center text-slate-400">Nenhum produto encontrado.</td>
           </tr>
           <template v-else>
-            <tr v-for="product in displayedProducts" :key="product.id">
+            <tr v-for="product in products" :key="product.id">
               <td class="px-4 py-2 text-slate-500">{{ product.sku }}</td>
               <td class="px-4 py-2 text-slate-800">{{ product.name }}</td>
               <td class="px-4 py-2 text-right tabular-nums text-slate-700">{{ formatStockQty(product.qty_available) ?? '—' }}</td>
