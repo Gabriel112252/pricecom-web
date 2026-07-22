@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import api from '@/lib/api'
+import ProductComboBox from '@/components/ProductComboBox.vue'
 
 const props = defineProps({
   rule: { type: Object, default: null },
@@ -15,9 +16,16 @@ const AUTOMATION_LEVELS = [
   { value: 'automatic', label: 'Automático — repõe direto' },
 ]
 
+const CHANNEL_LABELS = {
+  yampi: 'Yampi',
+  shopify: 'Shopify',
+  tiktok: 'TikTok Shop',
+  mercadolivre: 'Mercado Livre',
+  shopee: 'Shopee',
+}
+
 function blankForm() {
   return {
-    product_id: '',
     min_threshold: 0,
     target_level: '',
     automation_level: 'manual',
@@ -33,12 +41,17 @@ function withNumericThresholds(rule) {
 }
 
 const form = ref(props.rule ? withNumericThresholds(props.rule) : blankForm())
-const products = ref([])
+const selectedProductId = ref(props.rule?.product_id || '')
+const initialProduct = props.rule ? { sku: props.rule.product_sku, name: props.rule.product_name || props.rule.product_sku } : null
+const channelListings = ref([])
+const loadingChannels = ref(false)
+const channelsError = ref('')
 
 watch(
   () => props.rule,
   (rule) => {
     form.value = rule ? withNumericThresholds(rule) : blankForm()
+    selectedProductId.value = rule?.product_id || ''
   },
 )
 
@@ -51,19 +64,52 @@ const isEditing = computed(() => !!props.rule?.id)
 // parte da identidade do registro.
 const identityLocked = computed(() => isEditing.value)
 
-async function loadProducts() {
+const canSubmit = computed(() => !!selectedProductId.value)
+
+function channelLabel(channel) {
+  return CHANNEL_LABELS[channel] || channel
+}
+
+async function loadChannelsForProduct(productId) {
+  channelListings.value = []
+  channelsError.value = ''
+  if (!productId) return
+
+  loadingChannels.value = true
   try {
-    const { data } = await api.get('/products', { params: { per_page: 100 } })
-    products.value = data.products
+    const { data } = await api.get(`/stock_overview/${productId}`)
+    channelListings.value = (data.channels || []).map((c) => ({
+      listing_id: c.listing_id,
+      channel: c.channel,
+      channel_priority: c.channel_priority,
+    }))
+    // Produto num canal só: prioridade 1 preenchida sozinha, sem forçar o
+    // usuário a configurar manualmente algo que só tem uma resposta óbvia.
+    if (channelListings.value.length === 1 && channelListings.value[0].channel_priority == null) {
+      channelListings.value[0].channel_priority = 1
+    }
   } catch {
-    // select fica vazio — o resto do form ainda funciona pra edição
+    channelsError.value = 'Não foi possível carregar os canais deste produto.'
+  } finally {
+    loadingChannels.value = false
   }
 }
 
-onMounted(loadProducts)
+function onProductSelect(product) {
+  loadChannelsForProduct(product.id)
+}
+
+if (selectedProductId.value) {
+  loadChannelsForProduct(selectedProductId.value)
+}
 
 function submit() {
-  emit('save', { ...form.value })
+  if (!canSubmit.value) return
+
+  emit('save', {
+    rule: { ...form.value, product_id: selectedProductId.value },
+    channel_priorities: channelListings.value.map((c) => ({ listing_id: c.listing_id, channel_priority: c.channel_priority })),
+  })
 }
 </script>
 
@@ -79,16 +125,39 @@ function submit() {
         <div class="grid grid-cols-2 gap-3">
           <label class="col-span-2 text-sm">
             <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Produto</span>
-            <select
-              v-model="form.product_id"
-              required
+            <ProductComboBox
+              v-model="selectedProductId"
+              :initial-product="initialProduct"
               :disabled="identityLocked"
-              class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
-            >
-              <option value="" disabled>Selecione um produto...</option>
-              <option v-for="p in products" :key="p.id" :value="p.id">{{ p.sku }} — {{ p.name }}</option>
-            </select>
+              placeholder="Buscar por SKU ou nome..."
+              class="mt-1"
+              @select="onProductSelect"
+            />
           </label>
+
+          <div v-if="loadingChannels" class="col-span-2 text-xs text-slate-400">Carregando canais do produto...</div>
+          <div v-else-if="channelsError" class="col-span-2 text-xs text-red-600">{{ channelsError }}</div>
+          <div v-else-if="selectedProductId && channelListings.length === 0" class="col-span-2 text-xs text-slate-400">
+            Este produto ainda não está listado em nenhum canal — a reposição automática não terá pra onde escrever até um sync criar um canal para ele.
+          </div>
+          <div v-else-if="channelListings.length" class="col-span-2 rounded-lg border border-slate-200 p-3">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Prioridade de abastecimento por canal</span>
+            <p class="mt-0.5 text-xs text-slate-400">Menor número = maior prioridade. Vazio = nunca escolhido pela reposição automática.</p>
+            <div class="mt-2 space-y-2">
+              <div v-for="entry in channelListings" :key="entry.listing_id" class="flex items-center justify-between gap-2 text-sm">
+                <span class="text-slate-700">{{ channelLabel(entry.channel) }}</span>
+                <input
+                  v-model.number="entry.channel_priority"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="—"
+                  class="w-20 rounded-lg border border-slate-300 p-1.5 text-right text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
           <label class="col-span-2 text-sm">
             <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Automação</span>
             <select v-model="form.automation_level" class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm">
@@ -110,7 +179,7 @@ function submit() {
         <p class="text-xs text-slate-400">
           Alerta dispara quando o estoque livre do produto (idworks menos o que já está alocado em cada canal) ficar
           igual ou abaixo do limite mínimo; a reposição automática, quando habilitada, escreve no canal de maior
-          prioridade configurada para o produto, até o nível alvo, limitada ao estoque livre.
+          prioridade configurada acima, até o nível alvo, limitada ao estoque livre.
         </p>
 
         <label class="flex items-center gap-2 border-t border-slate-100 pt-4 text-sm text-slate-700">
@@ -129,7 +198,7 @@ function submit() {
           </button>
           <button
             type="submit"
-            :disabled="submitting"
+            :disabled="submitting || !canSubmit"
             class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
           >
             {{ isEditing ? 'Salvar alterações' : 'Cadastrar regra' }}

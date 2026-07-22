@@ -48,15 +48,27 @@ function closeModal() {
   editingRule.value = null
 }
 
+// payload = { rule: {...}, channel_priorities: [{ listing_id, channel_priority }] }
+// — uma ação só do ponto de vista do usuário (um clique em "Cadastrar
+// regra"), mas duas categorias de escrita no backend: o StockAlertRule em
+// si e o channel_priority de cada listing do produto (não é campo da
+// regra, é de ChannelProductListing — ver StockAlertRuleModal). Salva a
+// regra primeiro; se ela falhar, as prioridades nem são tentadas.
 async function saveRule(payload) {
   submitting.value = true
   try {
     if (editingRule.value?.id) {
-      await api.put(`/stock_alert_rules/${editingRule.value.id}`, payload)
-      toast.success('Regra atualizada.')
+      await api.put(`/stock_alert_rules/${editingRule.value.id}`, payload.rule)
     } else {
-      await api.post('/stock_alert_rules', payload)
-      toast.success('Regra cadastrada.')
+      await api.post('/stock_alert_rules', payload.rule)
+    }
+
+    const priorityErrors = await savePriorities(payload.channel_priorities)
+
+    if (priorityErrors.length) {
+      toast.error(`Regra salva, mas a prioridade de ${priorityErrors.length} canal(is) não foi gravada — edite a regra de novo para tentar de novo.`)
+    } else {
+      toast.success(editingRule.value?.id ? 'Regra atualizada.' : 'Regra cadastrada.')
     }
     closeModal()
     await loadRules()
@@ -66,6 +78,24 @@ async function saveRule(payload) {
   } finally {
     submitting.value = false
   }
+}
+
+async function savePriorities(channelPriorities) {
+  const errors = []
+  await Promise.all(
+    (channelPriorities || [])
+      .filter((entry) => entry.listing_id)
+      .map(async (entry) => {
+        try {
+          await api.patch(`/channel_product_listings/${entry.listing_id}`, {
+            channel_priority: entry.channel_priority ?? '',
+          })
+        } catch {
+          errors.push(entry)
+        }
+      }),
+  )
+  return errors
 }
 
 async function removeRule(rule) {
