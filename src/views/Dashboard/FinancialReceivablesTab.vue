@@ -43,8 +43,10 @@ const direction = ref('asc')
 const receivables = computed(() => dashboard.value ?? {})
 const table = computed(() => receivables.value.table ?? { rows: [], meta: {} })
 const gatewayOptions = computed(() => receivables.value.gateway_options ?? [])
+// TikTok Shop sai da lista aqui — tem subtab financeira própria agora
+// (Financeiro > TikTok Shop). Esta tela é só recebíveis de gateway
+// (Pagar.me), então nunca lista provedores desabilitados/sem recebível.
 const enabledGateways = computed(() => gatewayOptions.value.filter((option) => !option.disabled))
-const disabledGateways = computed(() => gatewayOptions.value.filter((option) => option.disabled))
 const statusOptions = computed(() => {
   const options = receivables.value.status_options ?? []
   return [...new Set(['waiting_funds', 'paid', ...options])]
@@ -286,6 +288,11 @@ onMounted(load)
 
 <template>
   <section class="space-y-5">
+    <div>
+      <h2 class="text-lg font-semibold text-slate-900">Recebíveis Yampi via Pagar.me</h2>
+      <p class="mt-0.5 text-sm text-slate-500">Fluxo de caixa projetado, taxas, antecipação e conciliação por gateway</p>
+    </div>
+
     <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
@@ -300,16 +307,6 @@ onMounted(load)
                 : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
             "
             @click="selectGateway(option)"
-          >
-            {{ option.label }}
-          </button>
-          <button
-            v-for="option in disabledGateways"
-            :key="option.provider"
-            type="button"
-            class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-400"
-            :title="option.reason"
-            disabled
           >
             {{ option.label }}
           </button>
@@ -355,9 +352,6 @@ onMounted(load)
           </button>
         </div>
       </div>
-      <p v-if="disabledGateways.length" class="mt-3 text-xs text-slate-500">
-        TikTok Shop não passa por gateway próprio, sem dado de recebível disponível.
-      </p>
     </div>
 
     <div v-if="errorMessage" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">

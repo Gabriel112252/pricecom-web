@@ -9,7 +9,8 @@ import ExecutiveKpiCard from './ExecutiveKpiCard.vue'
 import RevenueBreakdownCard from './RevenueBreakdownCard.vue'
 import RevenueOrdersChart from './RevenueOrdersChart.vue'
 import SalesByChannelChart from './SalesByChannelChart.vue'
-import FinancialReceivablesTab from './FinancialReceivablesTab.vue'
+import FinancialTab from './FinancialTab.vue'
+import { FINANCE_SUBTABS } from './lib/financeTabs'
 import BrazilOrdersMap from './BrazilOrdersMap.vue'
 import DiscountCompositionCard from './DiscountCompositionCard.vue'
 import DiscountTicketExposureCard from './DiscountTicketExposureCard.vue'
@@ -42,6 +43,7 @@ const from = ref(toISODate(thirtyDaysAgo))
 const to = ref(toISODate(today))
 const channelIds = ref([])
 const activeTab = ref(DASHBOARD_TABS[0].key)
+const financeSubtab = ref(FINANCE_SUBTABS[0].key)
 
 const loading = ref(true)
 const errorMessage = ref('')
@@ -113,11 +115,15 @@ function couponDetail() {
         <h1 class="text-2xl font-semibold text-slate-900">Dashboard</h1>
         <p class="mt-1 text-sm text-slate-500">Visão geral operacional do hub Pricecom.</p>
       </div>
-      <!-- Escondido na aba Financeiro: ela tem seu próprio filtro local
-           (gateway + data de pagamento) com escopo diferente do filtro
-           global — os dois lado a lado confundiam, já que o global só
-           afetava gateway_fee_avg_per_order dentro dessa aba. -->
-      <div v-if="activeTab !== 'finance'" class="flex flex-wrap items-center gap-2">
+      <!-- Escondido só na subtab Yampi·Pagar.me: ela tem seu próprio
+           filtro local (gateway + data de pagamento) com escopo diferente
+           do filtro global. As subtabs Consolidado e TikTok Shop usam o
+           mesmo período/canal do resto do dashboard, então precisam do
+           filtro global visível. -->
+      <div
+        v-if="activeTab !== 'finance' || financeSubtab !== 'yampi_pagarme'"
+        class="flex flex-wrap items-center gap-2"
+      >
         <ChannelFilter :model-value="channelIds" @update:model-value="handleChannelChange" />
         <PeriodFilter :from="from" :to="to" @change="handlePeriodChange" />
       </div>
@@ -223,9 +229,15 @@ function couponDetail() {
         </section>
 
         <!-- Financeiro -->
-        <FinancialReceivablesTab
+        <FinancialTab
           v-show="activeTab === 'finance'"
-          :gateway-fee-avg-per-order="financial.gateway_fee_avg_per_order"
+          v-model:active-subtab="financeSubtab"
+          :financial="financial"
+          :coupons="coupons"
+          :granularity="granularity"
+          :from="from"
+          :to="to"
+          :channel-ids="channelIds"
         />
 
         <!-- Produtos -->

@@ -6,6 +6,18 @@ export function formatPct(value, digits = 1) {
   return `${Number(value ?? 0).toFixed(digits)}%`
 }
 
+// "—" para margem indisponível (revenue zero, custo incompleto) — nunca
+// "0%", que sugeriria um resultado real e não a ausência de um dado.
+export function formatPctOrDash(value, digits = 1) {
+  if (value === null || value === undefined) return '—'
+  return formatPct(value, digits)
+}
+
+export function formatMoneyOrDash(value) {
+  if (value === null || value === undefined) return '—'
+  return formatMoney(value)
+}
+
 export function formatCompactMoney(value) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
