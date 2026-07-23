@@ -10,6 +10,10 @@ const props = defineProps({
 
 const [revenueColor, ordersColor] = CATEGORICAL_COLORS
 
+const hasPartialCoverage = computed(() =>
+  props.timeline.some((row) => Number(row.tiktok_pending_orders_count || 0) > 0),
+)
+
 const option = computed(() => ({
   color: [revenueColor, ordersColor],
   textStyle: CHART_TEXT_STYLE,
@@ -25,14 +29,16 @@ const option = computed(() => ({
     trigger: 'axis',
     formatter(params) {
       const row = props.timeline[params[0]?.dataIndex] || {}
-      return [
+      const lines = [
         `<strong>${formatBucketLabel(row.date || '', props.granularity)}</strong>`,
-        `Receita líquida: ${formatMoney(row.net)}`,
-        `Receita bruta: ${formatMoney(row.gross)}`,
-        `Descontos: ${formatMoney(row.discounts)}`,
+        `Receita efetiva: ${formatMoney(row.net)}`,
         `Pedidos: ${Number(row.orders_count || 0)}`,
-        `Ticket líquido: ${formatMoney(row.average_ticket)}`,
-      ].join('<br />')
+        `Pedidos com financeiro disponível: ${Number(row.financial_orders_count ?? row.orders_count ?? 0)}`,
+      ]
+      if (Number(row.tiktok_pending_orders_count || 0) > 0) {
+        lines.push(`TikTok pendentes: ${Number(row.tiktok_pending_orders_count)}`)
+      }
+      return lines.join('<br />')
     },
   },
   xAxis: {
@@ -56,7 +62,7 @@ const option = computed(() => ({
   ],
   series: [
     {
-      name: 'Receita líquida',
+      name: 'Receita efetiva',
       type: 'bar',
       data: props.timeline.map((d) => d.net),
       barMaxWidth: 28,
@@ -79,7 +85,10 @@ const option = computed(() => ({
 <template>
   <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
     <h3 class="text-sm font-semibold text-slate-900">Receita e pedidos</h3>
-    <p class="mt-0.5 text-xs text-slate-400">Receita líquida e volume no período</p>
+    <p class="mt-0.5 text-xs text-slate-400">Receita efetiva e volume no período</p>
+    <p v-if="hasPartialCoverage" class="mt-0.5 text-xs text-amber-700">
+      Dados parciais — dias com pedidos TikTok ainda sem financeiro sincronizado.
+    </p>
     <div v-if="timeline.length === 0" class="chart-frame flex items-center justify-center text-sm text-slate-400">
       Sem dados no período.
     </div>

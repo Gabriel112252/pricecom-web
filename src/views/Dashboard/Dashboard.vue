@@ -1,8 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/lib/api'
-import { formatMoney, formatPct } from '@/lib/format'
+import { formatMoney, formatMoneyOrDash, formatPct } from '@/lib/format'
 import { DASHBOARD_TABS } from './lib/tabs'
+import TiktokCoverageBanner from './TiktokCoverageBanner.vue'
 import PeriodFilter from './PeriodFilter.vue'
 import ChannelFilter from './ChannelFilter.vue'
 import ExecutiveKpiCard from './ExecutiveKpiCard.vue'
@@ -95,6 +96,31 @@ const coupons = computed(() => summary.value?.coupons ?? {})
 const cartAbandonment = computed(() => summary.value?.cart_abandonment ?? {})
 const freightMargin = computed(() => summary.value?.freight_margin ?? {})
 
+// Banner de cobertura financeira TikTok da Visão Geral: reaproveita
+// financial.tiktok_coverage (mesmo indicador da aba Financeiro), mas some
+// quando a cobertura já está completa — na Financeiro o card fica sempre
+// visível, aqui é um aviso transitório enquanto o backfill roda.
+const overviewTiktokCoverageVisible = computed(() => {
+  const coverage = financial.value.tiktok_coverage
+  return Boolean(coverage?.available) && Number(coverage.coverage_percentage ?? 100) < 100
+})
+
+// "Pedidos" mostra sempre o total operacional (nunca cai por causa da
+// cobertura TikTok) — o detalhe só soma o recorte de quanto já tem
+// financeiro processado, sem misturar com data_quality.complete_orders_count
+// (que é sobre custo de produto/IDWorks, não sobre sync financeiro TikTok).
+function ordersDetail() {
+  const total = Number(kpis.value.orders_count ?? 0).toLocaleString('pt-BR')
+  const tiktokTotal = Number(kpis.value.tiktok_orders_count ?? 0)
+  const tiktokSynced = Number(kpis.value.tiktok_synced_orders_count ?? 0).toLocaleString('pt-BR')
+
+  if (tiktokTotal > 0) {
+    return `${total} pedidos no período · ${tiktokSynced} TikTok com financeiro processado`
+  }
+
+  return `${total} pedidos no período`
+}
+
 function couponDetail() {
   if (Number(kpis.value.shipping_subsidy_total || 0) > 0) {
     return `${formatMoney(kpis.value.shipping_subsidy_total)} de frete subsidiado · ${kpis.value.shipping_subsidy_orders_count ?? 0} pedidos`
@@ -159,28 +185,33 @@ function couponDetail() {
       <div class="space-y-6 transition-opacity" :class="{ 'opacity-60': loading }">
         <!-- Visão Geral -->
         <section v-show="activeTab === 'overview'" class="space-y-6">
+          <TiktokCoverageBanner v-if="overviewTiktokCoverageVisible" :coverage="financial.tiktok_coverage" />
+
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <RevenueBreakdownCard
               :breakdown="revenueBreakdown"
-              tooltip="Receita bruta menos descontos, pedidos cancelados/devolvidos, frete e imposto. Pedidos não pagos/indeterminados ficam fora."
+              tooltip="Yampi: receita bruta menos descontos, pedidos cancelados/devolvidos, frete e imposto. TikTok: revenue_amount dos pedidos com demonstrativo sincronizado — pedidos TikTok ainda pendentes não entram no valor. Pedidos não pagos/indeterminados ficam fora."
             />
             <ExecutiveKpiCard
               label="Pedidos"
               :value="String(kpis.orders_count ?? 0)"
               :delta-pct="kpis.orders_vs_previous_pct"
-              :detail="`${dataQuality.complete_orders_count ?? 0} completos`"
+              :detail="ordersDetail()"
             />
             <ExecutiveKpiCard
               label="Ticket médio"
-              :value="formatMoney(kpis.average_ticket)"
-              :delta-pct="kpis.average_ticket_vs_previous_pct"
-              detail="Receita líquida / pedidos"
+              :value="formatMoneyOrDash(kpis.average_ticket)"
+              :delta-pct="kpis.average_ticket_available ? kpis.average_ticket_vs_previous_pct : null"
+              detail="Receita efetiva / pedidos com financeiro disponível"
+              tooltip="Calculado somente sobre pedidos com receita financeira disponível. Pedidos TikTok ainda sem sincronização financeira não entram no cálculo."
+              :note="kpis.average_ticket_delta_partial ? kpis.net_revenue_delta_note : ''"
+              note-tone="warning"
             />
             <ExecutiveKpiCard
               label="Descontos"
               :value="formatMoney(kpis.coupon_discount_total)"
               :detail="couponDetail()"
-              tooltip="Soma de cupons identificados, descontos comerciais sem código e subsídio de frete estimado quando há frete real."
+              tooltip="Somente valor bancado pelo vendedor: cupons identificados, descontos comerciais sem código, subsídio de frete estimado e desconto do vendedor TikTok. Subsídio pago pela TikTok aparece em 'Incentivos da plataforma', nunca somado aqui."
             />
           </div>
 

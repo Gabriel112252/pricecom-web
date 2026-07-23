@@ -18,6 +18,9 @@ const CATEGORIES = [
 ]
 
 const totalDiscount = computed(() => Number(props.coupons.display_discount_total ?? props.coupons.total_discount ?? 0))
+// Bancado PELA TikTok — nunca somado ao total de "Descontos" acima (esse é
+// só valor bancado pelo vendedor). Mostrado como subtotal separado.
+const platformIncentiveTotal = computed(() => Number(props.coupons.platform_incentive_total || 0))
 
 const grossSharePct = computed(() => {
   const gross = Number(props.grossRevenue || 0)
@@ -59,12 +62,19 @@ const yampiTopCoupons = computed(() =>
   <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h3 class="text-sm font-semibold text-slate-900">Composição dos descontos</h3>
-        <p class="mt-0.5 text-xs text-slate-400">Progressivo/comercial, cupom e frete subsidiado</p>
+        <h3 class="text-sm font-semibold text-slate-900">Descontos e incentivos</h3>
+        <p class="mt-0.5 text-xs text-slate-400">Progressivo/comercial, cupom, frete subsidiado e desconto TikTok</p>
       </div>
-      <div class="text-right">
-        <p class="text-lg font-bold leading-tight tabular-nums text-slate-900">{{ formatMoney(totalDiscount) }}</p>
-        <p v-if="grossSharePct !== null" class="text-xs text-slate-500">{{ formatPct(grossSharePct) }} da receita bruta</p>
+      <div class="flex gap-5 text-right">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Descontos</p>
+          <p class="text-lg font-bold leading-tight tabular-nums text-slate-900">{{ formatMoney(totalDiscount) }}</p>
+          <p v-if="grossSharePct !== null" class="text-xs text-slate-500">{{ formatPct(grossSharePct) }} da receita bruta</p>
+        </div>
+        <div v-if="platformIncentiveTotal > 0" title="Bancado pela TikTok — não é desconto perdido pelo vendedor.">
+          <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Incentivos da plataforma</p>
+          <p class="text-lg font-bold leading-tight tabular-nums text-emerald-700">{{ formatMoney(platformIncentiveTotal) }}</p>
+        </div>
       </div>
     </div>
 
@@ -128,16 +138,45 @@ const yampiTopCoupons = computed(() =>
           </div>
 
           <div v-if="showTiktok" class="rounded-lg border border-slate-100 p-3">
-            <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Descontos TikTok</h4>
-            <p class="mt-1 text-2xl font-bold leading-tight tabular-nums text-slate-900">
-              {{ formatMoney(tiktokBlock.discount_total) }}
-            </p>
-            <p class="mt-0.5 text-xs tabular-nums text-slate-500">
-              {{ tiktokBlock.orders_count ?? 0 }} pedidos com desconto
-            </p>
-            <p class="mt-2 text-[11px] leading-snug text-slate-400">
-              TikTok não distingue tipo de desconto na API — total agregado de seller + platform discount.
-            </p>
+            <div class="flex items-center justify-between gap-2">
+              <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">TikTok Shop</h4>
+              <span
+                v-if="Number(tiktokBlock.financial_coverage_percentage ?? 100) < 100"
+                class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20"
+              >
+                Dados parciais
+              </span>
+            </div>
+            <dl class="mt-2 space-y-1.5 text-sm">
+              <div class="flex items-center justify-between gap-2">
+                <dt class="text-slate-500">Desconto do vendedor</dt>
+                <dd class="tabular-nums font-medium text-slate-900">{{ formatMoney(tiktokBlock.seller_discount_total) }}</dd>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <dt class="text-slate-500">Subsídio TikTok</dt>
+                <dd class="tabular-nums font-medium text-emerald-700">{{ formatMoney(tiktokBlock.platform_subsidy_total) }}</dd>
+              </div>
+              <div v-if="Number(tiktokBlock.platform_shipping_subsidy_total || 0) > 0" class="flex items-center justify-between gap-2">
+                <dt class="text-slate-500">Frete subsidiado pela TikTok</dt>
+                <dd class="tabular-nums font-medium text-emerald-700">{{ formatMoney(tiktokBlock.platform_shipping_subsidy_total) }}</dd>
+              </div>
+              <div v-if="Number(tiktokBlock.seller_shipping_subsidy_total || 0) > 0" class="flex items-center justify-between gap-2">
+                <dt class="text-slate-500">Frete subsidiado pelo vendedor</dt>
+                <dd class="tabular-nums font-medium text-slate-900">{{ formatMoney(tiktokBlock.seller_shipping_subsidy_total) }}</dd>
+              </div>
+              <div class="flex items-center justify-between gap-2 border-t border-slate-100 pt-1.5">
+                <dt class="text-slate-500">Pago pelo cliente</dt>
+                <dd class="tabular-nums font-medium text-slate-900">{{ formatMoney(tiktokBlock.buyer_paid_product_total) }}</dd>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <dt class="text-slate-500">Receita efetiva</dt>
+                <dd class="tabular-nums font-medium text-slate-900">{{ formatMoney(tiktokBlock.effective_revenue_total) }}</dd>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <dt class="text-slate-500">Cobertura financeira</dt>
+                <dd class="tabular-nums font-medium text-slate-900">{{ formatPct(tiktokBlock.financial_coverage_percentage) }}</dd>
+              </div>
+            </dl>
           </div>
         </div>
       </div>

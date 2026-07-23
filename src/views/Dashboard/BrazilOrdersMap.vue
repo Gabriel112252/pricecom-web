@@ -48,7 +48,17 @@ const topStates = computed(() => props.regionalSales.top_states || [])
 const topState = computed(() => props.regionalSales.top_state)
 
 function stateFor(uf) {
-  return byState.value[uf] || { state: uf, name: uf, orders_count: 0, net_revenue: 0, share_percentage: 0 }
+  return (
+    byState.value[uf] || {
+      state: uf,
+      name: uf,
+      orders_count: 0,
+      net_revenue: 0,
+      share_percentage: 0,
+      tiktok_pending_orders_count: 0,
+      financial_coverage_partial: false,
+    }
+  )
 }
 
 function fillFor(uf) {
@@ -91,6 +101,9 @@ function fillFor(uf) {
           >
             <title>
               {{ stateFor(tile.state).name }}: {{ stateFor(tile.state).orders_count }} pedidos · {{ formatMoney(stateFor(tile.state).net_revenue) }}
+              <template v-if="stateFor(tile.state).financial_coverage_partial">
+                ({{ stateFor(tile.state).tiktok_pending_orders_count }} pedido(s) TikTok ainda sem financeiro — fora do valor)
+              </template>
             </title>
           </rect>
           <text
@@ -118,6 +131,9 @@ function fillFor(uf) {
             <span>{{ formatMoney(state.net_revenue) }}</span>
             <span>{{ formatPct(state.share_percentage) }}</span>
           </div>
+          <p v-if="state.financial_coverage_partial" class="mt-0.5 text-[11px] leading-snug text-amber-700">
+            {{ state.tiktok_pending_orders_count }} pedido(s) TikTok pendente(s) de financeiro — fora do valor acima.
+          </p>
         </div>
       </div>
     </div>

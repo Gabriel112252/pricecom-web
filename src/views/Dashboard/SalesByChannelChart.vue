@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { CATEGORICAL_COLORS, CHART_INK, CHART_TEXT_STYLE } from '@/lib/chartTheme'
-import { formatCompactMoney, formatMoney, formatPct } from '@/lib/format'
+import { formatCompactMoney, formatMoney, formatMoneyOrDash, formatPct } from '@/lib/format'
 
 const props = defineProps({
   channels: { type: Array, default: () => [] },
@@ -18,14 +18,20 @@ const option = computed(() => ({
     trigger: 'item',
     formatter(params) {
       const row = params.data?.payload || {}
-      return [
+      const lines = [
         `<strong>${row.channel}</strong>`,
-        `Receita líquida: ${formatMoney(row.net_revenue)}`,
-        `Receita bruta: ${formatMoney(row.gross_revenue)}`,
+        `Receita efetiva: ${formatMoney(row.net_revenue)}`,
         `Pedidos: ${Number(row.orders_count || 0)}`,
-        `Ticket líquido: ${formatMoney(row.average_ticket)}`,
+        `Ticket médio: ${formatMoneyOrDash(row.average_ticket)}`,
         `Participação: ${formatPct(row.share_percentage)}`,
-      ].join('<br />')
+      ]
+      // TikTok Shop só carrega tiktok_coverage_percentage — mostra a
+      // cobertura pra deixar claro que o valor pode crescer conforme o
+      // backfill financeiro avança, nunca comparado como definitivo.
+      if (row.tiktok_coverage_percentage !== null && row.tiktok_coverage_percentage !== undefined) {
+        lines.push(`${formatPct(row.tiktok_coverage_percentage)} de cobertura financeira`)
+      }
+      return lines.join('<br />')
     },
   },
   xAxis: {
@@ -53,7 +59,11 @@ const option = computed(() => ({
         show: true,
         position: 'right',
         color: CHART_INK.secondary,
-        formatter: (params) => formatCompactMoney(params.value),
+        formatter: (params) => {
+          const coverage = params.data?.payload?.tiktok_coverage_percentage
+          const money = formatCompactMoney(params.value)
+          return coverage != null && coverage < 100 ? `${money} · ${coverage.toFixed(1)}% cobertura` : money
+        },
       },
     },
   ],
@@ -63,7 +73,7 @@ const option = computed(() => ({
 <template>
   <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
     <h3 class="text-sm font-semibold text-slate-900">Vendas por canal</h3>
-    <p class="mt-0.5 text-xs text-slate-400">Receita líquida por origem</p>
+    <p class="mt-0.5 text-xs text-slate-400">Receita efetiva por origem</p>
     <div v-if="entries.length === 0" class="chart-frame flex items-center justify-center text-sm text-slate-400">
       Sem dados no período.
     </div>

@@ -33,7 +33,14 @@ function deltaTone(pct) {
 
 <template>
   <div class="flex h-full flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm" :title="tooltip || undefined">
-    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Receita líquida</p>
+    <div class="flex items-start justify-between gap-2">
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Receita efetiva</p>
+      <span
+        v-if="breakdown.financial_coverage_partial"
+        class="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500"
+        title="Cobertura financeira TikTok parcial — pedidos ainda pendentes não entram nesse valor."
+      />
+    </div>
     <p class="mt-2 text-2xl font-bold leading-tight tabular-nums text-slate-900">
       {{ formatMoney(breakdown.net_revenue) }}
     </p>
@@ -54,6 +61,9 @@ function deltaTone(pct) {
         {{ deltaLabel(breakdown.net_vs_previous_pct) }}
       </span>
     </div>
+    <p v-if="breakdown.financial_coverage_partial" class="mt-1.5 text-[11px] leading-snug text-amber-700">
+      {{ breakdown.tiktok_pending_orders_count }} pedido(s) TikTok ainda sem financeiro sincronizado — fora deste valor.
+    </p>
 
     <dl v-if="expanded" class="mt-3 space-y-1 border-t border-slate-100 pt-3 text-xs">
       <div class="flex items-baseline justify-between gap-2">
