@@ -1,14 +1,37 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useChannelCredentials } from './composables/useChannelCredentials'
 import { useIdworks } from './composables/useIdworks'
 import { usePagarme } from './composables/usePagarme'
+import { useToast } from '@/composables/useToast'
 import ChannelCard from './ChannelCard.vue'
 import SimpleCredentialCard from './SimpleCredentialCard.vue'
 import DataSourceConfigSection from './DataSourceConfigSection.vue'
 
 const { channels, loading, errorMessage, fetchChannels, connect, syncNow, updateRole, backfillOrders } =
   useChannelCredentials()
+
+const route = useRoute()
+const router = useRouter()
+const toast = useToast()
+
+// TiktokOauthController#callback redireciona de volta pra cá com
+// ?tiktok=connected|error&message=... — exibe o resultado e limpa a
+// query da URL pra um refresh não reexibir o toast.
+function showOauthRedirectResult() {
+  const { tiktok, message } = route.query
+  if (!tiktok) return
+
+  if (tiktok === 'connected') {
+    toast.success(message || 'Canal conectado com sucesso.')
+  } else {
+    toast.error(message || 'Não foi possível concluir a conexão do canal.')
+  }
+
+  const { tiktok: _tiktok, message: _message, credential_id: _credentialId, ...rest } = route.query
+  router.replace({ query: rest })
+}
 
 const { integration: idworksIntegration, fetchStatus: fetchIdworksStatus, connect: connectIdworks, sync: syncIdworks } =
   useIdworks()
@@ -26,6 +49,7 @@ onMounted(() => {
   fetchChannels()
   fetchIdworksStatus()
   fetchPagarmeStatus()
+  showOauthRedirectResult()
 })
 </script>
 
