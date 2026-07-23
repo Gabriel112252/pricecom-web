@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   channel: { type: String, default: '' },
@@ -18,6 +18,8 @@ const FIELD_LABELS = {
   app_key: 'App Key',
   app_secret: 'App Secret',
   webhook_secret: 'Webhook Secret',
+  partner_id: 'Partner ID (Shopee Open Platform)',
+  partner_key: 'Partner Key',
 }
 
 // webhook_secret é gerado numa tela de Webhooks separada da tela de
@@ -28,9 +30,24 @@ const CHANNEL_FIELD_LABELS = {
   shopify: { webhook_secret: 'Webhook Secret (Client Secret do app Shopify)' },
 }
 
-const SECRET_FIELDS = new Set(['token', 'secret_key', 'access_token', 'app_secret', 'webhook_secret'])
+const SECRET_FIELDS = new Set(['token', 'secret_key', 'access_token', 'app_secret', 'webhook_secret', 'partner_key'])
+
+// Campos extras opcionais por canal, fora dos required_fields do backend
+// (o connect aceita chaves além das obrigatórias). Shopee: marcar o
+// toggle grava "environment": "sandbox" no JSONB, que troca a base URL
+// para partner.test-stable (ver Integrations::ShopeeAuthService).
+const CHANNEL_EXTRA_TOGGLES = {
+  shopee: {
+    key: 'environment',
+    onValue: 'sandbox',
+    label: 'Ambiente sandbox (testes)',
+    hint: 'Desmarcado usa produção. Trocar de ambiente exige autorizar a loja novamente.',
+  },
+}
 
 const form = ref({})
+const extraToggle = computed(() => CHANNEL_EXTRA_TOGGLES[props.channel] || null)
+const extraToggleChecked = ref(false)
 
 watch(
   () => props.requiredFields,
@@ -45,7 +62,9 @@ function fieldLabel(field) {
 }
 
 function handleSubmit() {
-  emit('submit', { ...form.value })
+  const extras =
+    extraToggle.value && extraToggleChecked.value ? { [extraToggle.value.key]: extraToggle.value.onValue } : {}
+  emit('submit', { ...form.value, ...extras })
 }
 </script>
 
@@ -61,6 +80,17 @@ function handleSubmit() {
         class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
       />
     </div>
+    <label v-if="extraToggle" class="flex items-start gap-2 pt-1">
+      <input
+        v-model="extraToggleChecked"
+        type="checkbox"
+        class="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+      />
+      <span class="text-xs text-slate-600">
+        {{ extraToggle.label }}
+        <span class="block text-slate-400">{{ extraToggle.hint }}</span>
+      </span>
+    </label>
     <div class="flex justify-end gap-2 pt-2">
       <button
         type="button"

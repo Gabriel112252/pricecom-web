@@ -27,9 +27,12 @@ export function useChannelCredentials() {
 
   async function connect(channel, credentials, options = {}) {
     try {
-      if (channel === 'tiktok' && options.authorize) {
-        const { data } = await api.get('/integrations/tiktok/authorize_url')
-        if (!data.authorize_url) throw new Error('missing_tiktok_authorize_url')
+      // Canais OAuth (tiktok, shopee): o backend expõe o mesmo contrato
+      // GET /integrations/:channel/authorize_url e o navegador é levado
+      // pra tela de autorização da plataforma.
+      if (options.authorize) {
+        const { data } = await api.get(`/integrations/${channel}/authorize_url`)
+        if (!data.authorize_url) throw new Error(`missing_${channel}_authorize_url`)
 
         window.location.href = data.authorize_url
         return data

@@ -29,13 +29,17 @@ const connecting = ref(false)
 const syncing = ref(false)
 const backfilling = ref(false)
 
-const isTikTok = computed(() => props.channel.channel === 'tiktok')
-const hasTikTokCredentials = computed(() => Boolean(props.channel.credentials_configured))
+// Canais cuja conexão é OAuth (loja autoriza no site da plataforma):
+// primeiro salvam-se as chaves do app, depois "Conectar" redireciona pro
+// authorize_url. TikTok e Shopee compartilham exatamente o mesmo fluxo.
+const OAUTH_CHANNELS = new Set(['tiktok', 'shopee'])
+const isOauthChannel = computed(() => OAUTH_CHANNELS.has(props.channel.channel))
+const hasOauthCredentials = computed(() => Boolean(props.channel.credentials_configured))
 const connectButtonLabel = computed(() => {
-  if (connecting.value && isTikTok.value && hasTikTokCredentials.value) return 'Redirecionando...'
-  if (isTikTok.value && !hasTikTokCredentials.value) return 'Cadastrar credenciais'
+  if (connecting.value && isOauthChannel.value && hasOauthCredentials.value) return 'Redirecionando...'
+  if (isOauthChannel.value && !hasOauthCredentials.value) return 'Cadastrar credenciais'
   if (props.channel.status === 'pending') return 'Conectar'
-  return isTikTok.value ? 'Reconectar' : 'Editar credenciais'
+  return isOauthChannel.value ? 'Reconectar' : 'Editar credenciais'
 })
 
 const ordersPollingRunning = computed(() => {
@@ -51,7 +55,7 @@ const ordersPollingRunning = computed(() => {
 })
 
 async function handleConnectClick() {
-  if (!isTikTok.value || !hasTikTokCredentials.value) {
+  if (!isOauthChannel.value || !hasOauthCredentials.value) {
     showForm.value = !showForm.value
     return
   }
@@ -60,7 +64,7 @@ async function handleConnectClick() {
   try {
     await props.onConnect(props.channel.channel, {}, { authorize: true })
   } catch (e) {
-    toast.error(e.response?.data?.error || 'Não foi possível iniciar o OAuth do TikTok.')
+    toast.error(e.response?.data?.error || `Não foi possível iniciar o OAuth de ${CHANNEL_LABELS[props.channel.channel]}.`)
   } finally {
     connecting.value = false
   }
@@ -70,8 +74,8 @@ async function handleConnectSubmit(credentials) {
   connecting.value = true
   try {
     await props.onConnect(props.channel.channel, credentials)
-    if (isTikTok.value) {
-      toast.success('Credenciais do TikTok salvas. Clique em Conectar para autorizar.')
+    if (isOauthChannel.value) {
+      toast.success(`Credenciais de ${CHANNEL_LABELS[props.channel.channel]} salvas. Clique em Conectar para autorizar.`)
     } else {
       toast.success(`${CHANNEL_LABELS[props.channel.channel]} conectado com sucesso.`)
     }
@@ -161,6 +165,15 @@ function logClass(log) {
       Última sincronização: {{ channel.last_synced_at ? formatDateTime(channel.last_synced_at) : 'nunca' }}
     </p>
 
+    <!-- Canais OAuth em erro = token/refresh_token rejeitado pela
+         plataforma (ex: Shopee TokenRefreshJob): só reautorizar resolve. -->
+    <div
+      v-if="isOauthChannel && channel.status === 'error'"
+      class="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700"
+    >
+      Autorização inválida ou expirada — clique em "Reconectar" para autorizar a loja novamente.
+    </div>
+
     <div class="mt-4 flex gap-2">
       <button
         type="button"
@@ -171,7 +184,7 @@ function logClass(log) {
         {{ connectButtonLabel }}
       </button>
       <button
-        v-if="isTikTok && hasTikTokCredentials"
+        v-if="isOauthChannel && hasOauthCredentials"
         type="button"
         :disabled="connecting"
         class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"

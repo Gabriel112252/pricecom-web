@@ -16,20 +16,27 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 
-// TiktokOauthController#callback redireciona de volta pra cá com
-// ?tiktok=connected|error&message=... — exibe o resultado e limpa a
-// query da URL pra um refresh não reexibir o toast.
-function showOauthRedirectResult() {
-  const { tiktok, message } = route.query
-  if (!tiktok) return
+// Os controllers de OAuth (TiktokOauthController, ShopeeOauthController)
+// redirecionam de volta pra cá com ?<canal>=connected|error&message=... —
+// exibe o resultado e limpa a query da URL pra um refresh não reexibir o
+// toast.
+const OAUTH_REDIRECT_PARAMS = ['tiktok', 'shopee']
 
-  if (tiktok === 'connected') {
+function showOauthRedirectResult() {
+  const provider = OAUTH_REDIRECT_PARAMS.find((param) => route.query[param])
+  if (!provider) return
+
+  const status = route.query[provider]
+  const message = route.query.message
+
+  if (status === 'connected') {
     toast.success(message || 'Canal conectado com sucesso.')
   } else {
     toast.error(message || 'Não foi possível concluir a conexão do canal.')
   }
 
-  const { tiktok: _tiktok, message: _message, credential_id: _credentialId, ...rest } = route.query
+  const { message: _message, credential_id: _credentialId, ...rest } = route.query
+  delete rest[provider]
   router.replace({ query: rest })
 }
 
