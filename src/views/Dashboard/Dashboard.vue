@@ -31,6 +31,7 @@ import ValueAtRiskCard from './ValueAtRiskCard.vue'
 import OldestConflictCard from './OldestConflictCard.vue'
 import ResolutionRateChart from './ResolutionRateChart.vue'
 import ReconciliationBar from './ReconciliationBar.vue'
+import ReconciliationTab from './ReconciliationTab.vue'
 
 function toISODate(date) {
   return date.toISOString().slice(0, 10)
@@ -276,6 +277,11 @@ function couponDetail() {
           <TopProductsByRevenueChart :class="{ 'lg:col-span-2': !marginDataAvailable }" :products="summary.top_products_by_revenue" />
           <TopProductsByMarginChart v-if="marginDataAvailable" :products="summary.top_products_by_margin" />
           <ProductTurnoverSummary class="lg:col-span-2" :products="summary.product_turnover_summary" />
+        </section>
+
+        <!-- Reconciliação idworks -->
+        <section v-show="activeTab === 'reconciliation'">
+          <ReconciliationTab :from="from" :to="to" />
         </section>
 
         <!-- Saúde Operacional -->
