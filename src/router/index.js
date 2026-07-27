@@ -51,6 +51,12 @@ const routes = [
         meta: { title: 'Estoque' },
       },
       {
+        path: 'depoimentos',
+        name: 'testimonials',
+        component: () => import('@/views/Testimonials/Testimonials.vue'),
+        meta: { title: 'Depoimentos' },
+      },
+      {
         path: 'financeiro',
         name: 'financial',
         component: () => import('@/views/FinancialView.vue'),

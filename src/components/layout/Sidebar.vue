@@ -12,6 +12,7 @@ import {
   Boxes,
   Banknote,
   ShieldCheck,
+  Quote,
   Settings,
   ChevronsLeft,
   ChevronsRight,
@@ -34,6 +35,7 @@ const MAIN_ITEMS = [
   { label: 'Produtos', to: { name: 'products' }, icon: Package },
   { label: 'Estoque', to: { name: 'inventory' }, icon: Boxes },
   { label: 'Financeiro', to: { name: 'financial' }, icon: Banknote },
+  { label: 'Depoimentos', to: { name: 'testimonials' }, icon: Quote },
   { label: 'Auditoria', to: { name: 'audit' }, icon: ShieldCheck },
 ]
 
