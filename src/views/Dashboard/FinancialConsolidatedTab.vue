@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { formatMoney, formatMoneyOrDash, formatPctOrDash } from '@/lib/format'
 import ExecutiveKpiCard from './ExecutiveKpiCard.vue'
+import ReturnsAndRefundsCard from './ReturnsAndRefundsCard.vue'
 import TiktokCoverageBanner from './TiktokCoverageBanner.vue'
 
 const props = defineProps({
@@ -104,5 +105,7 @@ const tiktok = computed(() => consolidated.value.tiktok || {})
         </dl>
       </div>
     </div>
+
+    <ReturnsAndRefundsCard :returns-and-refunds="financial.returns_and_refunds || {}" />
   </section>
 </template>
