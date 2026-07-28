@@ -21,6 +21,11 @@ const props = defineProps({
 const available = computed(() => props.discountBreakdown?.available !== false && props.breakdown?.available !== false)
 const hasData = computed(() => Number(props.breakdown.orders_count || 0) > 0)
 
+// Ambas as listas são renderizadas genericamente (v-for por row.key/label)
+// — o backend (Dashboard::BuildSummary#build_tiktok_financial_breakdown) já
+// manda affiliate_commission, affiliate_ads_commission e
+// affiliate_partner_commission como três linhas separadas, sem precisar de
+// nenhum row hardcoded aqui.
 const reconciliation = computed(() => props.breakdown.reconciliation || [])
 const feeComposition = computed(() => props.breakdown.fee_composition || [])
 
@@ -268,7 +273,9 @@ function reconciliationAmount(row) {
         <!-- Gadget: Taxas e comissões TikTok -->
         <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h3 class="text-sm font-semibold text-slate-900">Taxas e comissões TikTok</h3>
-          <p class="mt-0.5 text-xs text-slate-400">Comissão de afiliado sempre separada da comissão da plataforma</p>
+          <p class="mt-0.5 text-xs text-slate-400">
+            Comissão de afiliado (orgânico, via anúncio, via parceiro) sempre separada da comissão da plataforma
+          </p>
           <div v-if="!hasFeeData" class="chart-frame-sm flex items-center justify-center text-sm text-slate-400">
             Sem taxas no período.
           </div>
