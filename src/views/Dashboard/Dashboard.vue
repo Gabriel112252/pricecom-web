@@ -16,6 +16,8 @@ import BrazilOrdersMap from './BrazilOrdersMap.vue'
 import DiscountCompositionCard from './DiscountCompositionCard.vue'
 import DiscountTicketExposureCard from './DiscountTicketExposureCard.vue'
 import CartAbandonmentCard from './CartAbandonmentCard.vue'
+import TiktokContentFormatCard from './TiktokContentFormatCard.vue'
+import YampiUtmBreakdownCard from './YampiUtmBreakdownCard.vue'
 import StockAlertsCard from './StockAlertsCard.vue'
 import FreightMarginCard from './FreightMarginCard.vue'
 import FinancialCompositionBlock from './FinancialCompositionBlock.vue'
@@ -257,6 +259,12 @@ function couponDetail() {
           <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
             <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
             <FreightMarginCard :freight-margin="freightMargin" />
+          </div>
+
+          <!-- Origem de aquisição: TikTok por formato de conteúdo + Yampi por UTM -->
+          <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+            <TiktokContentFormatCard :breakdown="summary.tiktok_content_format_breakdown || {}" />
+            <YampiUtmBreakdownCard :breakdown="summary.yampi_utm_breakdown || {}" />
           </div>
         </section>
 
