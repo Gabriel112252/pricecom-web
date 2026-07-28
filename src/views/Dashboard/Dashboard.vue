@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { formatMoney, formatMoneyOrDash, formatPct } from '@/lib/format'
 import { DASHBOARD_TABS } from './lib/tabs'
 import TiktokCoverageBanner from './TiktokCoverageBanner.vue'
+import ProductDataCoverageBanner from './ProductDataCoverageBanner.vue'
 import PeriodFilter from './PeriodFilter.vue'
 import ChannelFilter from './ChannelFilter.vue'
 import ExecutiveKpiCard from './ExecutiveKpiCard.vue'
@@ -282,6 +283,7 @@ function couponDetail() {
 
         <!-- Produtos -->
         <section v-show="activeTab === 'products'" class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <ProductDataCoverageBanner class="lg:col-span-2" :coverage="summary.tiktok_product_data_coverage || {}" />
           <TopProductsByRevenueChart :class="{ 'lg:col-span-2': !marginDataAvailable }" :products="summary.top_products_by_revenue" />
           <TopProductsByMarginChart v-if="marginDataAvailable" :products="summary.top_products_by_margin" />
           <ProductTurnoverSummary class="lg:col-span-2" :products="summary.product_turnover_summary" />
