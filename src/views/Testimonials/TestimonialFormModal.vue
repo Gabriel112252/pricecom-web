@@ -22,10 +22,31 @@ const creationMode = ref('manual') // 'manual' | 'tiktok'
 
 const form = ref({
   customer_name: props.testimonial?.customer_name || '',
-  product_id: props.testimonial?.product?.id || '',
   rating: props.testimonial?.rating || null,
   quote_text: props.testimonial?.quote_text || '',
 })
+
+// Um testimonial pode estar vinculado a vários produtos (ex: mesmo
+// depoimento aparecendo nas 3 variações de quantidade de um produto) —
+// ProductComboBox continua sendo seleção única (também usado por
+// StockAlertRuleModal.vue), então aqui ele só serve pra ADICIONAR um
+// produto de cada vez à lista; a seleção múltipla em si é essa lista +
+// chips removíveis abaixo.
+const selectedProducts = ref([ ...(props.testimonial?.products || []) ])
+// Remonta o ProductComboBox a cada adição, limpando o texto buscado — sem
+// isso o campo continuaria mostrando o último produto escolhido.
+const productPickerKey = ref(0)
+
+function addProduct(product) {
+  if (!selectedProducts.value.some((p) => p.id === product.id)) {
+    selectedProducts.value.push(product)
+  }
+  productPickerKey.value++
+}
+
+function removeProduct(productId) {
+  selectedProducts.value = selectedProducts.value.filter((p) => p.id !== productId)
+}
 
 const mediaFile = ref(null)
 const mediaPreview = ref(null)
@@ -82,8 +103,18 @@ async function save() {
     const payload = new FormData()
     payload.append('customer_name', form.value.customer_name)
     payload.append('quote_text', form.value.quote_text)
-    payload.append('product_id', form.value.product_id || '')
     if (form.value.rating) payload.append('rating', form.value.rating)
+
+    // Sempre manda product_ids[], mesmo vazio (um placeholder em branco) —
+    // o backend só sincroniza a lista de produtos quando a chave está
+    // presente na request (params.key?), pra não apagar os produtos já
+    // vinculados num PUT que só mexe em outro campo. Aqui o form sempre
+    // representa o estado completo pretendido, então sempre manda.
+    if (selectedProducts.value.length) {
+      selectedProducts.value.forEach((p) => payload.append('product_ids[]', p.id))
+    } else {
+      payload.append('product_ids[]', '')
+    }
 
     if (!isEdit.value && creationMode.value === 'tiktok') {
       payload.append('source_type', 'tiktok')
@@ -156,12 +187,29 @@ const canSave = computed(() => {
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700">Produto (opcional)</label>
+          <label class="block text-sm font-medium text-slate-700">Produtos (opcional)</label>
+          <div v-if="selectedProducts.length" class="mt-1 flex flex-wrap gap-1.5">
+            <span
+              v-for="product in selectedProducts"
+              :key="product.id"
+              class="inline-flex items-center gap-1 rounded-full bg-indigo-50 py-1 pl-2.5 pr-1.5 text-xs font-medium text-indigo-700"
+            >
+              {{ product.sku }} — {{ product.name }}
+              <button
+                type="button"
+                class="rounded-full p-0.5 text-indigo-400 hover:bg-indigo-100 hover:text-indigo-600"
+                :aria-label="`Remover ${product.name}`"
+                @click="removeProduct(product.id)"
+              >
+                ✕
+              </button>
+            </span>
+          </div>
           <ProductComboBox
-            v-model="form.product_id"
-            :initial-product="testimonial?.product"
-            placeholder="Buscar por SKU ou nome..."
+            :key="productPickerKey"
+            placeholder="Buscar por SKU ou nome pra adicionar..."
             class="mt-1"
+            @select="addProduct"
           />
         </div>
 

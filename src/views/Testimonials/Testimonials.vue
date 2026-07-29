@@ -209,7 +209,16 @@ async function destroyTestimonial(testimonial) {
               </td>
               <td class="px-4 py-2 text-slate-800">{{ testimonial.customer_name }}</td>
               <td class="px-4 py-2 text-slate-600">
-                <span v-if="testimonial.product">{{ testimonial.product.sku }} — {{ testimonial.product.name }}</span>
+                <div v-if="testimonial.products?.length" class="flex flex-wrap gap-1">
+                  <span
+                    v-for="product in testimonial.products"
+                    :key="product.id"
+                    class="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                    :title="`${product.sku} — ${product.name}`"
+                  >
+                    {{ product.sku }}
+                  </span>
+                </div>
                 <span v-else class="text-slate-300">—</span>
               </td>
               <td class="max-w-xs truncate px-4 py-2 text-slate-600" :title="testimonial.quote_text">
