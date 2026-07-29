@@ -23,7 +23,14 @@ const tiktok = computed(() => consolidated.value.tiktok || {})
       <ExecutiveKpiCard
         label="Receita efetiva"
         :value="formatMoney(consolidated.effective_revenue)"
-        tooltip="Yampi: receita líquida (bruta - descontos - reembolsos). TikTok: revenue_amount sincronizado. Somados, sem misturar as fórmulas."
+        :status="coverage.pending_orders_count > 0 ? 'warning' : 'default'"
+        :note="
+          coverage.pending_orders_count > 0
+            ? `Inclui ${formatMoney(coverage.pending_estimated_revenue)} estimado (${coverage.pending_orders_count} pedido(s) TikTok pendente(s))`
+            : ''
+        "
+        note-tone="warning"
+        tooltip="Yampi: receita líquida (bruta - descontos - reembolsos). TikTok: revenue_amount confirmado para pedidos sincronizados, estimado (gross_value - desconto do vendedor) para os ainda pendentes. Somados, sem misturar as fórmulas."
       />
       <ExecutiveKpiCard
         label="Valor recebido/liquidado"
@@ -92,7 +99,7 @@ const tiktok = computed(() => consolidated.value.tiktok || {})
           </div>
           <div class="flex items-center justify-between">
             <dt class="text-slate-500">Liquidado</dt>
-            <dd class="font-medium text-slate-900">{{ formatMoney(tiktok.received_amount) }}</dd>
+            <dd class="font-medium text-slate-900">{{ formatMoneyOrDash(tiktok.received_amount) }}</dd>
           </div>
           <div class="flex items-center justify-between">
             <dt class="text-slate-500">Cobertura</dt>
@@ -103,6 +110,10 @@ const tiktok = computed(() => consolidated.value.tiktok || {})
             <dd class="font-semibold text-slate-900">{{ formatMoneyOrDash(tiktok.real_profit) }}</dd>
           </div>
         </dl>
+        <p v-if="coverage.pending_orders_count > 0" class="mt-3 border-t border-slate-100 pt-2 text-[11px] leading-snug text-amber-700">
+          Aguardando fechamento do TikTok — {{ coverage.pending_orders_count }} pedido(s),
+          {{ formatMoney(coverage.pending_estimated_revenue) }} em aberto.
+        </p>
       </div>
     </div>
 

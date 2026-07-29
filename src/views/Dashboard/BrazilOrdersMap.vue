@@ -102,7 +102,7 @@ function fillFor(uf) {
             <title>
               {{ stateFor(tile.state).name }}: {{ stateFor(tile.state).orders_count }} pedidos · {{ formatMoney(stateFor(tile.state).net_revenue) }}
               <template v-if="stateFor(tile.state).financial_coverage_partial">
-                ({{ stateFor(tile.state).tiktok_pending_orders_count }} pedido(s) TikTok ainda sem financeiro — fora do valor)
+                ({{ stateFor(tile.state).tiktok_pending_orders_count }} pedido(s) TikTok com valor estimado — financeiro ainda não fechou)
               </template>
             </title>
           </rect>
@@ -132,7 +132,7 @@ function fillFor(uf) {
             <span>{{ formatPct(state.share_percentage) }}</span>
           </div>
           <p v-if="state.financial_coverage_partial" class="mt-0.5 text-[11px] leading-snug text-amber-700">
-            {{ state.tiktok_pending_orders_count }} pedido(s) TikTok pendente(s) de financeiro — fora do valor acima.
+            {{ state.tiktok_pending_orders_count }} pedido(s) TikTok com valor <strong>estimado</strong> — financeiro ainda não fechou.
           </p>
         </div>
       </div>

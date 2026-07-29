@@ -38,7 +38,7 @@ function deltaTone(pct) {
       <span
         v-if="breakdown.financial_coverage_partial"
         class="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500"
-        title="Cobertura financeira TikTok parcial — pedidos ainda pendentes não entram nesse valor."
+        title="Cobertura financeira TikTok parcial — pedidos ainda pendentes entram com valor estimado (gross_value - desconto do vendedor), não confirmado."
       />
     </div>
     <p class="mt-2 text-2xl font-bold leading-tight tabular-nums text-slate-900">
@@ -62,7 +62,7 @@ function deltaTone(pct) {
       </span>
     </div>
     <p v-if="breakdown.financial_coverage_partial" class="mt-1.5 text-[11px] leading-snug text-amber-700">
-      {{ breakdown.tiktok_pending_orders_count }} pedido(s) TikTok ainda sem financeiro sincronizado — fora deste valor.
+      {{ breakdown.tiktok_pending_orders_count }} pedido(s) TikTok com valor <strong>estimado</strong> — financeiro ainda não fechou.
     </p>
 
     <dl v-if="expanded" class="mt-3 space-y-1 border-t border-slate-100 pt-3 text-xs">

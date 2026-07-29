@@ -5,6 +5,7 @@ import { formatCompactMoney, formatMoney } from '@/lib/format'
 
 const props = defineProps({
   byChannel: { type: Object, default: () => ({}) },
+  coverage: { type: Object, default: () => ({}) },
 })
 
 // echarts renders category index 0 at the bottom of a horizontal bar chart,
@@ -55,7 +56,10 @@ const option = computed(() => ({
 <template>
   <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
     <h3 class="text-sm font-semibold text-slate-900">Receita por canal</h3>
-    <p class="mt-0.5 text-xs text-slate-400">Receita líquida no período</p>
+    <p class="mt-0.5 text-xs text-slate-400">Receita efetiva no período</p>
+    <p v-if="coverage.current_period_partial" class="mt-0.5 text-[11px] leading-snug text-amber-700">
+      Inclui estimativa para {{ coverage.tiktok_pending_orders_count }} pedido(s) TikTok ainda sem financeiro fechado.
+    </p>
     <div v-if="entries.length === 0" class="chart-frame flex items-center justify-center text-sm text-slate-400">
       Sem dados no período.
     </div>

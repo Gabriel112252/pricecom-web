@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { formatMoney } from '@/lib/format'
 
 const props = defineProps({
   coverage: { type: Object, default: () => ({}) },
@@ -8,6 +9,7 @@ const props = defineProps({
 const hasOrders = computed(() => Number(props.coverage.orders_count || 0) > 0)
 const pct = computed(() => Number(props.coverage.coverage_percentage || 0))
 const isPartial = computed(() => hasOrders.value && pct.value < 100)
+const pendingEstimatedRevenue = computed(() => Number(props.coverage.pending_estimated_revenue || 0))
 </script>
 
 <template>
@@ -15,7 +17,7 @@ const isPartial = computed(() => hasOrders.value && pct.value < 100)
     v-if="coverage.available !== false"
     class="rounded-lg border bg-white p-4 shadow-sm"
     :class="isPartial ? 'border-amber-200' : 'border-slate-200'"
-    title="Percentual de pedidos TikTok do período que já têm o demonstrativo financeiro sincronizado (financial_synced_at). Pedidos pendentes ainda não entram nos totais de liquidado/lucro real."
+    title="Percentual de pedidos TikTok do período que já têm o demonstrativo financeiro sincronizado (financial_synced_at). Pedidos pendentes entram com receita estimada, mas nunca em valor liquidado/lucro real — esses só existem depois do fechamento."
   >
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
@@ -37,6 +39,9 @@ const isPartial = computed(() => hasOrders.value && pct.value < 100)
         <p class="text-xs text-slate-500">
           {{ coverage.synced_orders_count ?? 0 }} de {{ coverage.orders_count ?? 0 }} pedidos processados
           <span v-if="coverage.pending_orders_count"> · {{ coverage.pending_orders_count }} pendentes</span>
+        </p>
+        <p v-if="pendingEstimatedRevenue > 0" class="mt-0.5 text-[11px] leading-snug text-amber-700">
+          {{ formatMoney(pendingEstimatedRevenue) }} ainda não confirmados (estimativa até o fechamento)
         </p>
       </div>
     </div>

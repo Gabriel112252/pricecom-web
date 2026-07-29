@@ -197,7 +197,14 @@ onMounted(load)
           <tr v-for="row in rows" :key="row.id" class="text-slate-600">
             <td class="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">{{ row.order_number || '—' }}</td>
             <td class="px-4 py-3 text-right whitespace-nowrap">{{ formatDateTime(row.ordered_at) }}</td>
-            <td class="px-4 py-3 text-right whitespace-nowrap">{{ formatMoneyOrDash(row.effective_revenue) }}</td>
+            <td
+              class="px-4 py-3 text-right whitespace-nowrap"
+              :class="row.revenue_confirmed ? '' : 'text-amber-700'"
+              :title="row.revenue_confirmed ? '' : 'Estimado: gross_value - desconto do vendedor, financeiro ainda não fechou.'"
+            >
+              {{ formatMoneyOrDash(row.effective_revenue) }}
+              <span v-if="!row.revenue_confirmed && row.effective_revenue != null" class="text-[10px] font-medium">· estimado</span>
+            </td>
             <td class="px-4 py-3 text-right whitespace-nowrap">{{ formatMoneyOrDash(row.settlement_amount) }}</td>
             <td class="px-4 py-3 text-right whitespace-nowrap">{{ formatMoneyOrDash(row.fees_total) }}</td>
             <td

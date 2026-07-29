@@ -21,6 +21,15 @@ const props = defineProps({
 const available = computed(() => props.discountBreakdown?.available !== false && props.breakdown?.available !== false)
 const hasData = computed(() => Number(props.breakdown.orders_count || 0) > 0)
 
+// Mensagem compartilhada pelos estados vazios de taxas/gráficos diários:
+// "sem dado" e "aguardando fechamento" são coisas diferentes — o primeiro
+// é genuinamente zero, o segundo só ainda não foi confirmado pela TikTok.
+const pendingClosureMessage = computed(() => {
+  const count = Number(props.coverage.pending_orders_count || 0)
+  if (!count) return null
+  return `Aguardando fechamento do TikTok — ${count} pedido(s), ${formatMoney(props.coverage.pending_estimated_revenue)} em aberto.`
+})
+
 // Ambas as listas são renderizadas genericamente (v-for por row.key/label)
 // — o backend (Dashboard::BuildSummary#build_tiktok_financial_breakdown) já
 // manda affiliate_commission, affiliate_ads_commission e
@@ -200,12 +209,21 @@ function reconciliationAmount(row) {
         <ExecutiveKpiCard
           label="Receita efetiva"
           :value="formatMoney(breakdown.revenue_amount_total)"
-          tooltip="Receita reconhecida para o vendedor antes das taxas (revenue_amount)."
+          :status="coverage.pending_orders_count > 0 ? 'warning' : 'default'"
+          :note="
+            coverage.pending_orders_count > 0
+              ? `Inclui ${formatMoney(coverage.pending_estimated_revenue)} estimado (${coverage.pending_orders_count} pedido(s) pendente(s))`
+              : ''
+          "
+          note-tone="warning"
+          tooltip="Receita reconhecida para o vendedor antes das taxas — revenue_amount confirmado quando sincronizado, estimativa (gross_value - desconto do vendedor) enquanto pendente."
         />
         <ExecutiveKpiCard
           label="Pago pelos clientes"
           :value="formatMoney(discountBreakdown.buyer_paid_product_total)"
-          tooltip="Valor efetivamente pago pelo cliente pelo produto."
+          :status="coverage.pending_orders_count > 0 ? 'warning' : 'default'"
+          note-tone="warning"
+          tooltip="Valor efetivamente pago pelo cliente pelo produto. Inclui estimativa para pedidos ainda pendentes de fechamento."
         />
         <ExecutiveKpiCard
           label="Subsídio TikTok"
@@ -276,8 +294,8 @@ function reconciliationAmount(row) {
           <p class="mt-0.5 text-xs text-slate-400">
             Comissão de afiliado (orgânico, via anúncio, via parceiro) sempre separada da comissão da plataforma
           </p>
-          <div v-if="!hasFeeData" class="chart-frame-sm flex items-center justify-center text-sm text-slate-400">
-            Sem taxas no período.
+          <div v-if="!hasFeeData" class="chart-frame-sm flex items-center justify-center px-4 text-center text-sm text-slate-400">
+            {{ pendingClosureMessage || 'Sem taxas no período.' }}
           </div>
           <template v-else>
             <v-chart class="chart-frame-sm mt-2 w-full" :option="feeCompositionOption" autoresize />
@@ -320,8 +338,8 @@ function reconciliationAmount(row) {
         <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h3 class="text-sm font-semibold text-slate-900">Resultado financeiro diário</h3>
           <p class="mt-0.5 text-xs text-slate-400">Receita efetiva, valor liquidado e lucro real · só pedidos sincronizados</p>
-          <div v-if="!dailySeries.length" class="chart-frame flex items-center justify-center text-sm text-slate-400">
-            Sem dados no período.
+          <div v-if="!dailySeries.length" class="chart-frame flex items-center justify-center px-4 text-center text-sm text-slate-400">
+            {{ pendingClosureMessage || 'Sem dados no período.' }}
           </div>
           <v-chart v-else class="chart-frame mt-3 w-full" :option="dailyResultOption" autoresize />
         </div>
@@ -329,8 +347,8 @@ function reconciliationAmount(row) {
         <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h3 class="text-sm font-semibold text-slate-900">Margem real por dia</h3>
           <p class="mt-0.5 text-xs text-slate-400">Evolução percentual · dias sem pedido sincronizado ficam sem ponto</p>
-          <div v-if="!dailySeries.length" class="chart-frame flex items-center justify-center text-sm text-slate-400">
-            Sem dados no período.
+          <div v-if="!dailySeries.length" class="chart-frame flex items-center justify-center px-4 text-center text-sm text-slate-400">
+            {{ pendingClosureMessage || 'Sem dados no período.' }}
           </div>
           <v-chart v-else class="chart-frame mt-3 w-full" :option="marginTrendOption" autoresize />
         </div>
