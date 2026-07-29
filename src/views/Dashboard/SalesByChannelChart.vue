@@ -25,17 +25,6 @@ const option = computed(() => ({
         `Ticket médio: ${formatMoneyOrDash(row.average_ticket)}`,
         `Participação: ${formatPct(row.share_percentage)}`,
       ]
-      // TikTok Shop só carrega tiktok_coverage_percentage — mostra a
-      // cobertura pra deixar claro que parte do valor acima é estimativa
-      // (gross_value - desconto do vendedor) enquanto o backfill financeiro
-      // não confirma o restante via revenue_amount.
-      if (row.tiktok_coverage_percentage !== null && row.tiktok_coverage_percentage !== undefined) {
-        const label =
-          row.tiktok_coverage_percentage >= 100
-            ? `${formatPct(row.tiktok_coverage_percentage)} confirmado`
-            : `${formatPct(row.tiktok_coverage_percentage)} confirmado — restante estimado`
-        lines.push(label)
-      }
       return lines.join('<br />')
     },
   },
@@ -64,11 +53,7 @@ const option = computed(() => ({
         show: true,
         position: 'right',
         color: CHART_INK.secondary,
-        formatter: (params) => {
-          const coverage = params.data?.payload?.tiktok_coverage_percentage
-          const money = formatCompactMoney(params.value)
-          return coverage != null && coverage < 100 ? `${money} · ${coverage.toFixed(1)}% confirmado` : money
-        },
+        formatter: (params) => formatCompactMoney(params.value),
       },
     },
   ],

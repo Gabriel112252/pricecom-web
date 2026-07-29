@@ -23,14 +23,7 @@ const tiktok = computed(() => consolidated.value.tiktok || {})
       <ExecutiveKpiCard
         label="Receita efetiva"
         :value="formatMoney(consolidated.effective_revenue)"
-        :status="coverage.pending_orders_count > 0 ? 'warning' : 'default'"
-        :note="
-          coverage.pending_orders_count > 0
-            ? `Inclui ${formatMoney(coverage.pending_estimated_revenue)} estimado (${coverage.pending_orders_count} pedido(s) TikTok pendente(s))`
-            : ''
-        "
-        note-tone="warning"
-        tooltip="Yampi: receita líquida (bruta - descontos - reembolsos). TikTok: revenue_amount confirmado para pedidos sincronizados, estimado (gross_value - desconto do vendedor) para os ainda pendentes. Somados, sem misturar as fórmulas."
+        tooltip="Yampi: receita líquida (bruta - descontos - reembolsos). TikTok: revenue_amount quando o demonstrativo já sincronizou, gross_value - desconto do vendedor enquanto isso não acontece. Somados, sem misturar as fórmulas."
       />
       <ExecutiveKpiCard
         label="Valor recebido/liquidado"

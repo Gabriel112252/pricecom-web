@@ -10,10 +10,6 @@ const props = defineProps({
 
 const [revenueColor, ordersColor] = CATEGORICAL_COLORS
 
-const hasPartialCoverage = computed(() =>
-  props.timeline.some((row) => Number(row.tiktok_pending_orders_count || 0) > 0),
-)
-
 const option = computed(() => ({
   color: [revenueColor, ordersColor],
   textStyle: CHART_TEXT_STYLE,
@@ -86,9 +82,6 @@ const option = computed(() => ({
   <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
     <h3 class="text-sm font-semibold text-slate-900">Receita e pedidos</h3>
     <p class="mt-0.5 text-xs text-slate-400">Receita efetiva e volume no período</p>
-    <p v-if="hasPartialCoverage" class="mt-0.5 text-xs text-amber-700">
-      Dados parciais — dias com pedidos TikTok ainda sem financeiro sincronizado.
-    </p>
     <div v-if="timeline.length === 0" class="chart-frame flex items-center justify-center text-sm text-slate-400">
       Sem dados no período.
     </div>

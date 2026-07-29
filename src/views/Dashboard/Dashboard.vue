@@ -3,7 +3,6 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/lib/api'
 import { formatMoney, formatMoneyOrDash, formatPct } from '@/lib/format'
 import { DASHBOARD_TABS } from './lib/tabs'
-import TiktokCoverageBanner from './TiktokCoverageBanner.vue'
 import ProductDataCoverageBanner from './ProductDataCoverageBanner.vue'
 import PeriodFilter from './PeriodFilter.vue'
 import ChannelFilter from './ChannelFilter.vue'
@@ -99,19 +98,6 @@ const regionalSales = computed(() => summary.value?.regional_sales ?? {})
 const coupons = computed(() => summary.value?.coupons ?? {})
 const cartAbandonment = computed(() => summary.value?.cart_abandonment ?? {})
 const freightMargin = computed(() => summary.value?.freight_margin ?? {})
-// Fonte compartilhada do aviso "inclui estimativa TikTok" nos widgets de
-// Vendas (RevenueByHourChart/ChannelBreakdown/AovByChannelChart) — já
-// calculado pelo backend, só não tinha consumidor até agora.
-const overviewFinancialCoverage = computed(() => summary.value?.overview_financial_coverage ?? {})
-
-// Banner de cobertura financeira TikTok da Visão Geral: reaproveita
-// financial.tiktok_coverage (mesmo indicador da aba Financeiro), mas some
-// quando a cobertura já está completa — na Financeiro o card fica sempre
-// visível, aqui é um aviso transitório enquanto o backfill roda.
-const overviewTiktokCoverageVisible = computed(() => {
-  const coverage = financial.value.tiktok_coverage
-  return Boolean(coverage?.available) && Number(coverage.coverage_percentage ?? 100) < 100
-})
 
 // "Pedidos" mostra sempre o total operacional (nunca cai por causa da
 // cobertura TikTok) — o detalhe só soma o recorte de quanto já tem
@@ -193,12 +179,10 @@ function couponDetail() {
       <div class="space-y-6 transition-opacity" :class="{ 'opacity-60': loading }">
         <!-- Visão Geral -->
         <section v-show="activeTab === 'overview'" class="space-y-6">
-          <TiktokCoverageBanner v-if="overviewTiktokCoverageVisible" :coverage="financial.tiktok_coverage" />
-
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <RevenueBreakdownCard
               :breakdown="revenueBreakdown"
-              tooltip="Yampi: receita bruta menos descontos, pedidos cancelados/devolvidos, frete e imposto. TikTok: revenue_amount confirmado para pedidos com demonstrativo sincronizado; para pedidos ainda pendentes, usa uma estimativa (gross_value - desconto do vendedor) até o financeiro fechar. Pedidos não pagos/indeterminados ficam fora."
+              tooltip="Yampi: receita bruta menos descontos, pedidos cancelados/devolvidos, frete e imposto. TikTok: revenue_amount quando o demonstrativo já sincronizou, gross_value - desconto do vendedor enquanto isso não acontece. Pedidos não pagos/indeterminados ficam fora."
             />
             <ExecutiveKpiCard
               label="Pedidos"
@@ -210,11 +194,8 @@ function couponDetail() {
               label="Ticket médio"
               :value="formatMoneyOrDash(kpis.average_ticket)"
               :delta-pct="kpis.average_ticket_available ? kpis.average_ticket_vs_previous_pct : null"
-              :status="kpis.tiktok_pending_orders_count > 0 ? 'warning' : 'default'"
               detail="Receita efetiva / total de pedidos do período"
-              tooltip="TikTok confirmado (revenue_amount) quando o demonstrativo já fechou; estimado (gross_value - desconto do vendedor) enquanto está pendente — nunca fica de fora do cálculo."
-              :note="kpis.average_ticket_delta_partial ? kpis.net_revenue_delta_note : ''"
-              note-tone="warning"
+              tooltip="Receita efetiva do período dividida pelo total de pedidos."
             />
             <ExecutiveKpiCard
               label="Descontos"
@@ -254,13 +235,9 @@ function couponDetail() {
         <section v-show="activeTab === 'sales'" class="space-y-6">
           <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <OrderVolumeChart :by-channel-series="summary.orders.by_channel_series" :granularity="granularity" />
-            <RevenueByHourChart
-              :by-channel-series="summary.revenue.by_channel_series"
-              :granularity="granularity"
-              :coverage="overviewFinancialCoverage"
-            />
-            <ChannelBreakdown :by-channel="summary.revenue.by_channel" :coverage="overviewFinancialCoverage" />
-            <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" :coverage="overviewFinancialCoverage" />
+            <RevenueByHourChart :by-channel-series="summary.revenue.by_channel_series" :granularity="granularity" />
+            <ChannelBreakdown :by-channel="summary.revenue.by_channel" />
+            <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" />
           </div>
 
           <!-- items-start: cada card com altura do próprio conteúdo — sem

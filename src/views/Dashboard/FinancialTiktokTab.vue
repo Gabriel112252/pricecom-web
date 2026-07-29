@@ -209,21 +209,12 @@ function reconciliationAmount(row) {
         <ExecutiveKpiCard
           label="Receita efetiva"
           :value="formatMoney(breakdown.revenue_amount_total)"
-          :status="coverage.pending_orders_count > 0 ? 'warning' : 'default'"
-          :note="
-            coverage.pending_orders_count > 0
-              ? `Inclui ${formatMoney(coverage.pending_estimated_revenue)} estimado (${coverage.pending_orders_count} pedido(s) pendente(s))`
-              : ''
-          "
-          note-tone="warning"
-          tooltip="Receita reconhecida para o vendedor antes das taxas — revenue_amount confirmado quando sincronizado, estimativa (gross_value - desconto do vendedor) enquanto pendente."
+          tooltip="Receita reconhecida para o vendedor antes das taxas — revenue_amount quando o demonstrativo já sincronizou, gross_value - desconto do vendedor enquanto isso não acontece."
         />
         <ExecutiveKpiCard
           label="Pago pelos clientes"
           :value="formatMoney(discountBreakdown.buyer_paid_product_total)"
-          :status="coverage.pending_orders_count > 0 ? 'warning' : 'default'"
-          note-tone="warning"
-          tooltip="Valor efetivamente pago pelo cliente pelo produto. Inclui estimativa para pedidos ainda pendentes de fechamento."
+          tooltip="Valor efetivamente pago pelo cliente pelo produto."
         />
         <ExecutiveKpiCard
           label="Subsídio TikTok"

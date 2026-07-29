@@ -6,7 +6,6 @@ import { formatCompactMoney, formatMoney, formatBucketLabel } from '@/lib/format
 const props = defineProps({
   byChannelSeries: { type: Array, default: () => [] },
   granularity: { type: String, default: 'day' },
-  coverage: { type: Object, default: () => ({}) },
 })
 
 const buckets = computed(() => [...new Set(props.byChannelSeries.map((row) => row.date))].sort())
@@ -66,9 +65,6 @@ const option = computed(() => ({
   <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
     <h3 class="text-sm font-semibold text-slate-900">{{ title }}</h3>
     <p class="mt-0.5 text-xs text-slate-400">{{ subtitle }}</p>
-    <p v-if="coverage.current_period_partial" class="mt-0.5 text-[11px] leading-snug text-amber-700">
-      Inclui estimativa para {{ coverage.tiktok_pending_orders_count }} pedido(s) TikTok ainda sem financeiro fechado.
-    </p>
     <div v-if="buckets.length === 0" class="chart-frame flex items-center justify-center text-sm text-slate-400">
       Sem dados no período.
     </div>

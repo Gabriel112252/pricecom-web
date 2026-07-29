@@ -143,9 +143,8 @@ const yampiTopCoupons = computed(() =>
               <span
                 v-if="Number(tiktokBlock.financial_coverage_percentage ?? 100) < 100"
                 class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20"
-                title="Receita efetiva e pago pelo cliente incluem estimativa (gross_value - desconto do vendedor) para pedidos ainda sem financeiro fechado."
               >
-                Inclui estimativa
+                Dados parciais
               </span>
             </div>
             <dl class="mt-2 space-y-1.5 text-sm">
