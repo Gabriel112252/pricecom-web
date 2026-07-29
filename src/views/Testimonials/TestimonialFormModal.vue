@@ -190,7 +190,7 @@ const canSave = computed(() => {
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700">Depoimento {{ !isEdit && creationMode === 'tiktok' ? '(opcional)' : '' }}</label>
+          <label class="block text-sm font-medium text-slate-700">Depoimento (opcional)</label>
           <textarea
             v-model="form.quote_text"
             rows="4"
