@@ -6,6 +6,7 @@ import { useToast } from '@/composables/useToast'
 import { formatDateTime } from '@/lib/format'
 import StatusBadge from '@/components/StatusBadge.vue'
 import TestimonialFormModal from './TestimonialFormModal.vue'
+import TestimonialBulkImportModal from './TestimonialBulkImportModal.vue'
 
 const STATUS_FILTER_OPTIONS = [
   { value: '', label: 'Todos' },
@@ -38,6 +39,7 @@ const sourceTypeFilter = ref('')
 const page = ref(1)
 const workingId = ref(null)
 const editingTestimonial = ref(undefined) // undefined: modal fechado; null: criar; object: editar
+const showBulkImport = ref(false)
 
 function isVideoUrl(url) {
   return /\.(mp4|mov|webm)$/i.test(url || '')
@@ -94,6 +96,12 @@ function onSaved() {
   load()
 }
 
+// Só recarrega a lista por baixo — o modal continua aberto mostrando o
+// relatório final (sucessos/falhas por linha) até o usuário fechar.
+function onBulkImported() {
+  load()
+}
+
 async function runTransition(testimonial, action) {
   workingId.value = testimonial.id
   try {
@@ -130,14 +138,22 @@ async function destroyTestimonial(testimonial) {
         <h1 class="text-2xl font-semibold text-slate-900">Depoimentos</h1>
         <p class="mt-1 text-sm text-slate-500">Curadoria de depoimentos de clientes pra geração de conteúdo de marketing.</p>
       </div>
-      <button
-        v-if="auth.isAdmin"
-        type="button"
-        class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-        @click="openCreate"
-      >
-        Novo depoimento
-      </button>
+      <div v-if="auth.isAdmin" class="flex gap-2">
+        <button
+          type="button"
+          class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          @click="showBulkImport = true"
+        >
+          Importar em massa
+        </button>
+        <button
+          type="button"
+          class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          @click="openCreate"
+        >
+          Novo depoimento
+        </button>
+      </div>
     </div>
 
     <div v-if="!auth.isAdmin" class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
@@ -307,6 +323,12 @@ async function destroyTestimonial(testimonial) {
       :testimonial="editingTestimonial"
       @close="closeModal"
       @saved="onSaved"
+    />
+
+    <TestimonialBulkImportModal
+      v-if="showBulkImport"
+      @close="showBulkImport = false"
+      @imported="onBulkImported"
     />
   </div>
 </template>
