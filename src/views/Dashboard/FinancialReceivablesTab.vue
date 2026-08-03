@@ -79,6 +79,38 @@ const paymentMethodChartOption = computed(() => ({
   ],
 }))
 
+// "Recebíveis por forma de pagamento" acima conta linhas de recebível — e
+// uma venda parcelada no cartão vira N recebíveis (um por parcela), contra
+// 1 só do Pix/boleto. Isso infla cartão em qualquer soma por linha/valor.
+// Este gadget conta vendas distintas (charge_id, vindo do backend já
+// deduplicado) para os mesmos filtros da tela — reflete quantas vendas
+// aconteceram por forma de pagamento, não quantos recebíveis caem na janela.
+const salesByPaymentMethod = computed(() => receivables.value.sales_by_payment_method ?? [])
+const hasSalesByPaymentMethodData = computed(() => salesByPaymentMethod.value.some((row) => Number(row.sales_count || 0) > 0))
+
+const salesByPaymentMethodChartOption = computed(() => ({
+  textStyle: CHART_TEXT_STYLE,
+  tooltip: {
+    trigger: 'item',
+    formatter: (params) => `${params.name}<br />${params.data.value} venda(s) (${params.data.sharePct}%)`,
+  },
+  legend: { bottom: 0, textStyle: CHART_TEXT_STYLE },
+  series: [
+    {
+      type: 'pie',
+      radius: ['45%', '70%'],
+      itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
+      label: { show: false },
+      data: salesByPaymentMethod.value.map((row, index) => ({
+        name: methodLabel(row.payment_method),
+        value: row.sales_count,
+        sharePct: row.share_pct,
+        itemStyle: { color: CATEGORICAL_COLORS[index % CATEGORICAL_COLORS.length] },
+      })),
+    },
+  ],
+}))
+
 const installmentDistribution = computed(() => receivables.value.installment_distribution ?? [])
 const hasInstallmentData = computed(() => installmentDistribution.value.some((row) => Number(row.receivables_count || 0) > 0))
 
@@ -424,6 +456,27 @@ onMounted(load)
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 class="text-sm font-semibold text-slate-900">Vendas por forma de pagamento</h3>
+      <p class="mt-0.5 text-xs text-slate-400">
+        Conta vendas distintas (1 venda parcelada = 1), não recebíveis — compare com "Recebíveis por forma de
+        pagamento" abaixo, que conta cada parcela separadamente e por isso tende a mostrar cartão bem acima do real.
+      </p>
+      <div v-if="!hasSalesByPaymentMethodData" class="chart-frame-sm flex items-center justify-center text-sm text-slate-400">
+        Sem vendas no período.
+      </div>
+      <template v-else>
+        <v-chart class="chart-frame-sm mt-2 w-full" :option="salesByPaymentMethodChartOption" autoresize />
+        <div class="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
+          <div v-for="row in salesByPaymentMethod" :key="row.payment_method" class="flex items-center gap-1.5 text-xs">
+            <span class="text-slate-600">{{ methodLabel(row.payment_method) }}</span>
+            <span class="font-semibold tabular-nums text-slate-900">{{ row.sales_count }}</span>
+            <span class="tabular-nums text-slate-400">({{ row.share_pct }}%)</span>
+          </div>
+        </div>
+      </template>
     </div>
 
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
