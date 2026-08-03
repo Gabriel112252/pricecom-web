@@ -79,37 +79,21 @@ const paymentMethodChartOption = computed(() => ({
   ],
 }))
 
-// "Recebíveis por forma de pagamento" acima conta linhas de recebível — e
-// uma venda parcelada no cartão vira N recebíveis (um por parcela), contra
-// 1 só do Pix/boleto. Isso infla cartão em qualquer soma por linha/valor.
-// Este gadget conta vendas distintas (charge_id, vindo do backend já
-// deduplicado) para os mesmos filtros da tela — reflete quantas vendas
-// aconteceram por forma de pagamento, não quantos recebíveis caem na janela.
+// "Recebíveis por forma de pagamento" abaixo conta linhas de recebível
+// filtradas por payment_date (quando o dinheiro cai) — cartão no Brasil
+// liquida ~D+30 mesmo à vista, Pix liquida no mesmo dia, então essa janela
+// futura acumula vendas de cartão passadas e quase nenhum Pix recente.
+// Este gadget vem de outra métrica no backend (date_created, janela fixa de
+// 30 dias, charge_id distinto) — por isso não é redundante com o gráfico de
+// pizza abaixo, é uma barra de composição (mesmo padrão do
+// DiscountCompositionCard) pra deixar visualmente claro que é uma métrica
+// diferente, não outra pizza com cor trocada.
 const salesByPaymentMethod = computed(() => receivables.value.sales_by_payment_method ?? [])
 const hasSalesByPaymentMethodData = computed(() => salesByPaymentMethod.value.some((row) => Number(row.sales_count || 0) > 0))
 
-const salesByPaymentMethodChartOption = computed(() => ({
-  textStyle: CHART_TEXT_STYLE,
-  tooltip: {
-    trigger: 'item',
-    formatter: (params) => `${params.name}<br />${params.data.value} venda(s) (${params.data.sharePct}%)`,
-  },
-  legend: { bottom: 0, textStyle: CHART_TEXT_STYLE },
-  series: [
-    {
-      type: 'pie',
-      radius: ['45%', '70%'],
-      itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
-      label: { show: false },
-      data: salesByPaymentMethod.value.map((row, index) => ({
-        name: methodLabel(row.payment_method),
-        value: row.sales_count,
-        sharePct: row.share_pct,
-        itemStyle: { color: CATEGORICAL_COLORS[index % CATEGORICAL_COLORS.length] },
-      })),
-    },
-  ],
-}))
+function salesByPaymentMethodColor(index) {
+  return CATEGORICAL_COLORS[index % CATEGORICAL_COLORS.length]
+}
 
 const installmentDistribution = computed(() => receivables.value.installment_distribution ?? [])
 const hasInstallmentData = computed(() => installmentDistribution.value.some((row) => Number(row.receivables_count || 0) > 0))
@@ -461,22 +445,32 @@ onMounted(load)
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <h3 class="text-sm font-semibold text-slate-900">Vendas por forma de pagamento</h3>
       <p class="mt-0.5 text-xs text-slate-400">
-        Conta vendas distintas (1 venda parcelada = 1), não recebíveis — compare com "Recebíveis por forma de
-        pagamento" abaixo, que conta cada parcela separadamente e por isso tende a mostrar cartão bem acima do real.
+        Últimos 30 dias corridos pela data da cobrança (não pela data de pagamento) — cartão liquida ~D+30 mesmo à
+        vista, Pix no mesmo dia, então "Recebíveis por forma de pagamento" abaixo (que filtra por data de pagamento)
+        acumula cartão de vendas passadas e mostra bem menos Pix do que realmente aconteceu.
       </p>
-      <div v-if="!hasSalesByPaymentMethodData" class="chart-frame-sm flex items-center justify-center text-sm text-slate-400">
+      <div v-if="!hasSalesByPaymentMethodData" class="mt-4 flex h-16 items-center justify-center text-sm text-slate-400">
         Sem vendas no período.
       </div>
-      <template v-else>
-        <v-chart class="chart-frame-sm mt-2 w-full" :option="salesByPaymentMethodChartOption" autoresize />
-        <div class="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
-          <div v-for="row in salesByPaymentMethod" :key="row.payment_method" class="flex items-center gap-1.5 text-xs">
+      <div v-else class="mt-4 space-y-3">
+        <div class="flex h-3 w-full gap-[2px] overflow-hidden rounded-full">
+          <div
+            v-for="(row, index) in salesByPaymentMethod"
+            :key="row.payment_method"
+            class="h-full rounded-[3px] first:rounded-l-full last:rounded-r-full"
+            :style="{ width: `${row.share_pct}%`, backgroundColor: salesByPaymentMethodColor(index), minWidth: '4px' }"
+            :title="`${methodLabel(row.payment_method)} · ${row.sales_count} venda(s) · ${row.share_pct}%`"
+          />
+        </div>
+        <div class="flex flex-wrap gap-x-5 gap-y-1.5">
+          <div v-for="(row, index) in salesByPaymentMethod" :key="row.payment_method" class="flex items-center gap-1.5 text-xs">
+            <span class="h-2.5 w-2.5 shrink-0 rounded-sm" :style="{ backgroundColor: salesByPaymentMethodColor(index) }" />
             <span class="text-slate-600">{{ methodLabel(row.payment_method) }}</span>
             <span class="font-semibold tabular-nums text-slate-900">{{ row.sales_count }}</span>
             <span class="tabular-nums text-slate-400">({{ row.share_pct }}%)</span>
           </div>
         </div>
-      </template>
+      </div>
     </div>
 
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
