@@ -16,10 +16,10 @@ const tiktok = computed(() => consolidated.value.tiktok || {})
 </script>
 
 <template>
-  <section class="space-y-5">
+  <section class="space-y-6">
     <TiktokCoverageBanner :coverage="coverage" />
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
       <ExecutiveKpiCard
         label="Receita efetiva"
         :value="formatMoney(consolidated.effective_revenue)"
@@ -60,7 +60,7 @@ const tiktok = computed(() => consolidated.value.tiktok || {})
       <ExecutiveKpiCard label="Pedidos" :value="String(consolidated.orders_count ?? 0)" detail="Yampi + TikTok, período filtrado" />
     </div>
 
-    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="text-sm font-semibold text-slate-900">Yampi · Pagar.me</h3>
         <dl class="mt-3 space-y-2 text-sm">

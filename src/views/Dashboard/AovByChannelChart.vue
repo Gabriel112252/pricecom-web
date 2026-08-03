@@ -51,7 +51,7 @@ const option = computed(() => ({
 </script>
 
 <template>
-  <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+  <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
     <h3 class="text-sm font-semibold text-slate-900">Ticket médio por canal</h3>
     <p class="mt-0.5 text-xs text-slate-400">Valor médio por pedido no período</p>
     <div v-if="entries.length === 0" class="chart-frame flex items-center justify-center text-sm text-slate-400">

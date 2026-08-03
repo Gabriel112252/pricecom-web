@@ -184,7 +184,7 @@ function reconciliationAmount(row) {
 </script>
 
 <template>
-  <section class="space-y-5">
+  <section class="space-y-6">
     <div>
       <h2 class="text-lg font-semibold text-slate-900">Financeiro TikTok Shop</h2>
       <p class="mt-0.5 text-sm text-slate-500">Vendas, incentivos, taxas, liquidações, custos e resultado real</p>
@@ -200,7 +200,7 @@ function reconciliationAmount(row) {
     </div>
 
     <template v-else>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
         <ExecutiveKpiCard
           label="Preço de referência"
           :value="formatMoney(discountBreakdown.reference_price_total)"
@@ -278,7 +278,7 @@ function reconciliationAmount(row) {
         </p>
       </div>
 
-      <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
+      <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <!-- Gadget: Taxas e comissões TikTok -->
         <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h3 class="text-sm font-semibold text-slate-900">Taxas e comissões TikTok</h3>
@@ -325,7 +325,7 @@ function reconciliationAmount(row) {
         </div>
       </div>
 
-      <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h3 class="text-sm font-semibold text-slate-900">Resultado financeiro diário</h3>
           <p class="mt-0.5 text-xs text-slate-400">Receita efetiva, valor liquidado e lucro real · só pedidos sincronizados</p>

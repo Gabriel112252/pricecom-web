@@ -3,6 +3,7 @@
 export const DASHBOARD_TABS = [
   { key: 'overview', label: 'Visão Geral' },
   { key: 'sales', label: 'Vendas' },
+  { key: 'discounts', label: 'Descontos & Cupons' },
   { key: 'products', label: 'Produtos' },
   { key: 'finance', label: 'Financeiro' },
   { key: 'reconciliation', label: 'Reconciliação idworks' },

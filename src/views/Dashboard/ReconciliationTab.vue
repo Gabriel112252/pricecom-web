@@ -65,7 +65,7 @@ onMounted(load)
 
 <template>
   <section class="space-y-4">
-    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 class="text-sm font-semibold text-slate-900">Reconciliação idworks × Pricecom</h3>

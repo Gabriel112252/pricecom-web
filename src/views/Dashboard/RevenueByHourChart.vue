@@ -62,7 +62,7 @@ const option = computed(() => ({
 </script>
 
 <template>
-  <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+  <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
     <h3 class="text-sm font-semibold text-slate-900">{{ title }}</h3>
     <p class="mt-0.5 text-xs text-slate-400">{{ subtitle }}</p>
     <div v-if="buckets.length === 0" class="chart-frame flex items-center justify-center text-sm text-slate-400">

@@ -20,7 +20,7 @@ const activeSubtab = defineModel('activeSubtab', { default: FINANCE_SUBTABS[0].k
 </script>
 
 <template>
-  <section class="space-y-5">
+  <section class="space-y-6">
     <div class="relative isolate overflow-hidden border-b border-slate-200">
       <nav class="flex gap-1">
         <button

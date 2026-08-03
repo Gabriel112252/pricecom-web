@@ -16,6 +16,7 @@ import BrazilOrdersMap from './BrazilOrdersMap.vue'
 import DiscountCompositionCard from './DiscountCompositionCard.vue'
 import DiscountTicketExposureCard from './DiscountTicketExposureCard.vue'
 import CartAbandonmentCard from './CartAbandonmentCard.vue'
+import CartAbandonmentDiscountBreakdown from './CartAbandonmentDiscountBreakdown.vue'
 import TiktokContentFormatCard from './TiktokContentFormatCard.vue'
 import YampiUtmBreakdownCard from './YampiUtmBreakdownCard.vue'
 import StockAlertsCard from './StockAlertsCard.vue'
@@ -179,7 +180,7 @@ function couponDetail() {
       <div class="space-y-6 transition-opacity" :class="{ 'opacity-60': loading }">
         <!-- Visão Geral -->
         <section v-show="activeTab === 'overview'" class="space-y-6">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <RevenueBreakdownCard
               :breakdown="revenueBreakdown"
               tooltip="Yampi: receita bruta menos descontos, pedidos cancelados/devolvidos, frete e imposto. TikTok: revenue_amount quando o demonstrativo já sincronizou, gross_value - desconto do vendedor enquanto isso não acontece. Pedidos não pagos/indeterminados ficam fora."
@@ -209,50 +210,45 @@ function couponDetail() {
                (só 1 dos 4 slots ocupado) — operacional, não financeiro,
                então fica numa linha própria em vez de disputar espaço com
                os KPIs de receita. -->
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <StockAlertsCard />
           </div>
 
-          <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <RevenueOrdersChart :timeline="revenueTimeline" :granularity="granularity" />
             <SalesByChannelChart :channels="salesByChannel" />
           </div>
 
-          <!-- items-start: cada card com altura do próprio conteúdo — sem o
-               stretch implícito, o mapa não estica pra acompanhar a lista de
-               produtos do card de descontos -->
-          <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-            <BrazilOrdersMap :regional-sales="regionalSales" />
-            <DiscountCompositionCard :coupons="coupons" :gross-revenue="Number(revenueBreakdown.gross_revenue || 0)" />
-            <DiscountTicketExposureCard
-              :summary="summary.discount_ticket_summary || {}"
-              :products="summary.product_discount_exposure || []"
-            />
-          </div>
+          <BrazilOrdersMap :regional-sales="regionalSales" />
         </section>
 
         <!-- Vendas -->
         <section v-show="activeTab === 'sales'" class="space-y-6">
-          <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <OrderVolumeChart :by-channel-series="summary.orders.by_channel_series" :granularity="granularity" />
             <RevenueByHourChart :by-channel-series="summary.revenue.by_channel_series" :granularity="granularity" />
             <ChannelBreakdown :by-channel="summary.revenue.by_channel" />
             <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" />
           </div>
 
-          <!-- items-start: cada card com altura do próprio conteúdo — sem
-               o stretch implícito, o FreightMarginCard esticava pra
-               acompanhar a lista de produtos abandonados do card vizinho -->
-          <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-            <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
-            <FreightMarginCard :freight-margin="freightMargin" />
-          </div>
+          <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
+          <FreightMarginCard :freight-margin="freightMargin" />
 
           <!-- Origem de aquisição: TikTok por formato de conteúdo + Yampi por UTM -->
-          <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+          <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
             <TiktokContentFormatCard :breakdown="summary.tiktok_content_format_breakdown || {}" />
             <YampiUtmBreakdownCard :breakdown="summary.yampi_utm_breakdown || {}" />
           </div>
+        </section>
+
+        <!-- Descontos & Cupons -->
+        <section v-show="activeTab === 'discounts'" class="space-y-6">
+          <DiscountCompositionCard :coupons="coupons" :gross-revenue="Number(revenueBreakdown.gross_revenue || 0)" />
+          <DiscountTicketExposureCard
+            :summary="summary.discount_ticket_summary || {}"
+            :products="summary.product_discount_exposure || []"
+          />
+          <CartAbandonmentDiscountBreakdown :cart-abandonment="cartAbandonment" />
         </section>
 
         <!-- Financeiro -->
@@ -268,15 +264,17 @@ function couponDetail() {
         />
 
         <!-- Produtos -->
-        <section v-show="activeTab === 'products'" class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <ProductDataCoverageBanner class="lg:col-span-2" :coverage="summary.tiktok_product_data_coverage || {}" />
-          <TopProductsByRevenueChart :class="{ 'lg:col-span-2': !marginDataAvailable }" :products="summary.top_products_by_revenue" />
-          <TopProductsByMarginChart v-if="marginDataAvailable" :products="summary.top_products_by_margin" />
-          <ProductTurnoverSummary class="lg:col-span-2" :products="summary.product_turnover_summary" />
+        <section v-show="activeTab === 'products'" class="space-y-6">
+          <ProductDataCoverageBanner :coverage="summary.tiktok_product_data_coverage || {}" />
+          <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <TopProductsByRevenueChart :class="{ 'lg:col-span-2': !marginDataAvailable }" :products="summary.top_products_by_revenue" />
+            <TopProductsByMarginChart v-if="marginDataAvailable" :products="summary.top_products_by_margin" />
+            <ProductTurnoverSummary class="lg:col-span-2" :products="summary.product_turnover_summary" />
+          </div>
         </section>
 
         <!-- Reconciliação idworks -->
-        <section v-show="activeTab === 'reconciliation'">
+        <section v-show="activeTab === 'reconciliation'" class="space-y-6">
           <ReconciliationTab :from="from" :to="to" />
         </section>
 

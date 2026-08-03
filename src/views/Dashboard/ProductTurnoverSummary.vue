@@ -9,7 +9,7 @@ function formatQty(value) {
 </script>
 
 <template>
-  <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+  <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
     <h3 class="text-sm font-semibold text-slate-900">Giro real de produtos</h3>
     <p class="mt-0.5 text-xs text-slate-400">
       Quantidade real vendida no período, incluindo componentes consumidos dentro de kits
