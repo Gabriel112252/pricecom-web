@@ -27,6 +27,7 @@ import OrderVolumeChart from './OrderVolumeChart.vue'
 import RevenueByHourChart from './RevenueByHourChart.vue'
 import ChannelBreakdown from './ChannelBreakdown.vue'
 import AovByChannelChart from './AovByChannelChart.vue'
+import AovByChannelSeriesChart from './AovByChannelSeriesChart.vue'
 import TopProductsByRevenueChart from './TopProductsByRevenueChart.vue'
 import TopProductsByMarginChart from './TopProductsByMarginChart.vue'
 import ProductTurnoverSummary from './ProductTurnoverSummary.vue'
@@ -35,6 +36,7 @@ import OldestConflictCard from './OldestConflictCard.vue'
 import ResolutionRateChart from './ResolutionRateChart.vue'
 import ReconciliationBar from './ReconciliationBar.vue'
 import ReconciliationTab from './ReconciliationTab.vue'
+import CustomersTab from './CustomersTab.vue'
 
 function toISODate(date) {
   return date.toISOString().slice(0, 10)
@@ -229,6 +231,7 @@ function couponDetail() {
             <RevenueByHourChart :by-channel-series="summary.revenue.by_channel_series" :granularity="granularity" />
             <ChannelBreakdown :by-channel="summary.revenue.by_channel" />
             <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" />
+            <AovByChannelSeriesChart :aov-by-channel-series="summary.orders.aov_by_channel_series" :granularity="granularity" />
           </div>
 
           <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
@@ -271,6 +274,11 @@ function couponDetail() {
             <TopProductsByMarginChart v-if="marginDataAvailable" :products="summary.top_products_by_margin" />
             <ProductTurnoverSummary class="lg:col-span-2" :products="summary.product_turnover_summary" />
           </div>
+        </section>
+
+        <!-- Clientes -->
+        <section v-show="activeTab === 'customers'" class="space-y-6">
+          <CustomersTab :from="from" :to="to" />
         </section>
 
         <!-- Reconciliação idworks -->

@@ -5,6 +5,7 @@ export const DASHBOARD_TABS = [
   { key: 'sales', label: 'Vendas' },
   { key: 'discounts', label: 'Descontos & Cupons' },
   { key: 'products', label: 'Produtos' },
+  { key: 'customers', label: 'Clientes' },
   { key: 'finance', label: 'Financeiro' },
   { key: 'reconciliation', label: 'Reconciliação idworks' },
   // 'health' (Saúde Operacional) escondida por enquanto — não é definitivo,
