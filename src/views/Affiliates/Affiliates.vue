@@ -9,9 +9,9 @@ const activeTab = ref(AFFILIATE_TABS[0].key)
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 p-6 lg:p-8">
     <div>
-      <h1 class="text-xl font-semibold text-slate-900">Afiliados</h1>
+      <h1 class="text-2xl font-semibold text-slate-900">Afiliados</h1>
       <p class="mt-0.5 text-sm text-slate-500">TikTok Shop — funil de criadores afiliados</p>
     </div>
 

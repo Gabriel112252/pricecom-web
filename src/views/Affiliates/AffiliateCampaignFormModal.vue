@@ -6,19 +6,34 @@ import { useToast } from '@/composables/useToast'
 const emit = defineEmits(['close', 'created'])
 const toast = useToast()
 
+// Mirrors Affiliates::FilterCreators::SEGMENTS (backend) — keep in sync.
+const SEGMENT_OPTIONS = [
+  { key: 'accepted_no_content', label: 'Aceitou mas nunca postou' },
+  { key: 'showcase_no_content', label: 'Produto na vitrine, zero conteúdo' },
+  { key: 'inactive_collaboration', label: 'Colaboração inativa' },
+]
+
 const name = ref('')
-const statusFilter = ref('NORMAL')
+const statusFilter = ref('')
+const selectedSegments = ref([])
 const messageTemplate = ref('')
 const step = ref('form') // form | confirm
 const recipientsPreview = ref(null)
 const previewLoading = ref(false)
 const submitting = ref(false)
 
+function buildSegmentFilter() {
+  const filter = {}
+  if (statusFilter.value) filter.collaboration_status = statusFilter.value
+  if (selectedSegments.value.length) filter.segments = selectedSegments.value
+  return filter
+}
+
 async function loadPreview() {
   previewLoading.value = true
   try {
     const { data } = await api.get('/affiliates/creators', {
-      params: { collaboration_status: statusFilter.value || undefined, per_page: 1 },
+      params: { ...buildSegmentFilter(), per_page: 1 },
     })
     recipientsPreview.value = data.meta?.total_count ?? 0
   } catch {
@@ -28,7 +43,7 @@ async function loadPreview() {
   }
 }
 
-watch(statusFilter, loadPreview, { immediate: true })
+watch([ statusFilter, selectedSegments ], loadPreview, { immediate: true, deep: true })
 
 function goToConfirm() {
   if (!name.value.trim() || !messageTemplate.value.trim()) {
@@ -44,7 +59,7 @@ async function submit() {
     await api.post('/affiliate_campaigns', {
       name: name.value,
       message_template: messageTemplate.value,
-      segment_filter: statusFilter.value ? { collaboration_status: statusFilter.value } : {},
+      segment_filter: buildSegmentFilter(),
     })
     toast.success('Campanha criada — o disparo começou em segundo plano.')
     emit('created')
@@ -65,23 +80,46 @@ async function submit() {
       </div>
 
       <template v-if="step === 'form'">
-        <div class="mt-4 space-y-3">
+        <div class="mt-4 space-y-4">
           <div>
             <label class="text-xs font-medium text-slate-500">Nome da campanha</label>
             <input v-model="name" type="text" class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm" />
           </div>
+
           <div>
-            <label class="text-xs font-medium text-slate-500">Segmento — status da colaboração</label>
+            <label class="text-xs font-medium text-slate-500">Status da colaboração</label>
             <select v-model="statusFilter" class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm">
               <option value="">Todos</option>
               <option value="NORMAL">Ativo</option>
               <option value="PAUSED">Pausado</option>
             </select>
-            <p class="mt-1 text-xs text-slate-400">
-              <span v-if="previewLoading">calculando destinatários...</span>
-              <span v-else-if="recipientsPreview !== null">{{ recipientsPreview }} criador(es) recebem esta campanha</span>
+          </div>
+
+          <div>
+            <label class="text-xs font-medium text-slate-500">Segmentos do funil (opcional)</label>
+            <div class="mt-1.5 space-y-1.5">
+              <label v-for="segment in SEGMENT_OPTIONS" :key="segment.key" class="flex items-start gap-2 text-sm text-slate-700">
+                <input v-model="selectedSegments" type="checkbox" :value="segment.key" class="mt-0.5" />
+                <span>{{ segment.label }}</span>
+              </label>
+            </div>
+            <p class="mt-1.5 text-xs text-slate-400">
+              Segmentos marcados são somados entre si — um criador entra na campanha se atender a
+              <strong>pelo menos um</strong> deles. O status acima é aplicado em conjunto (todos precisam bater) com os
+              segmentos selecionados.
+            </p>
+            <p class="mt-1.5 text-xs text-slate-400">
+              Ainda não disponíveis: <strong>nunca convidado</strong> (depende da aba Descobrir, que ainda não existe) e
+              <strong>já respondeu / nunca respondeu</strong> (o Pricecom hoje só registra as mensagens que você envia — não
+              há sincronização das respostas dos criadores ainda).
             </p>
           </div>
+
+          <p class="text-xs text-slate-400">
+            <span v-if="previewLoading">calculando destinatários...</span>
+            <span v-else-if="recipientsPreview !== null">{{ recipientsPreview }} criador(es) recebem esta campanha</span>
+          </p>
+
           <div>
             <label class="text-xs font-medium text-slate-500">Mensagem</label>
             <textarea v-model="messageTemplate" rows="4" class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm" />
