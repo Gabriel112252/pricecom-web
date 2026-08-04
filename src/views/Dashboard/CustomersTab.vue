@@ -1,10 +1,12 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import api from '@/lib/api'
-import { CATEGORICAL_COLORS, CHART_GRID, CHART_INK, CHART_TEXT_STYLE } from '@/lib/chartTheme'
-import { formatBucketLabel, formatCompactMoney, formatMoney, formatPct } from '@/lib/format'
-import ExecutiveKpiCard from './ExecutiveKpiCard.vue'
+import { formatPct } from '@/lib/format'
 import InlineAlertBanner from './InlineAlertBanner.vue'
+import RepeatPurchaseRateChart from './RepeatPurchaseRateChart.vue'
+import RepeatOrderShareChart from './RepeatOrderShareChart.vue'
+import RepurchaseGapHistogramChart from './RepurchaseGapHistogramChart.vue'
+import HorizontalRankingChart from './HorizontalRankingChart.vue'
 
 const props = defineProps({
   from: { type: String, required: true },
@@ -45,91 +47,47 @@ watch(() => [props.from, props.to, activeChannel.value], load)
 onMounted(load)
 
 const supported = computed(() => data.value?.supported === true)
+const granularity = computed(() => data.value?.granularity || 'day')
 
-const repeatRate = computed(() => data.value?.repeat_purchase_rate || null)
-const repeatRateValue = computed(() => {
-  const pct = repeatRate.value?.value_pct
-  return pct === null || pct === undefined ? '—' : formatPct(pct)
+// ---- 1) % de clientes que recompram ----
+const repeatPurchaseRate = computed(() => data.value?.repeat_purchase_rate || null)
+const repeatPurchaseTimeline = computed(() => repeatPurchaseRate.value?.timeline || [])
+const repeatPurchaseDetail = computed(() => {
+  if (!repeatPurchaseRate.value) return ''
+  return `${repeatPurchaseRate.value.repeat_customers}/${repeatPurchaseRate.value.total_customers} clientes com 2+ pedidos no período selecionado`
 })
-const repeatRateDetail = computed(() => {
-  if (!repeatRate.value) return ''
-  return `${repeatRate.value.repeat_customers}/${repeatRate.value.total_customers} clientes com 2+ pedidos no período`
-})
-const ordersWithoutEmailNote = computed(() => {
-  const count = repeatRate.value?.orders_without_customer_email_count
+const repeatPurchaseNote = computed(() => {
+  const count = repeatPurchaseRate.value?.orders_without_customer_email_count
   if (!count) return ''
   return `${count} pedido(s) do período sem e-mail capturado — fora do cálculo.`
 })
 
-const granularity = computed(() => data.value?.granularity || 'day')
-const timeline = computed(() => data.value?.revenue_by_customer_type?.timeline || [])
-const hasUnknownRevenue = computed(() => timeline.value.some((row) => Number(row.unknown_customer_revenue || 0) > 0))
-
-const revenueChartOption = computed(() => {
-  const series = [
-    {
-      name: 'Novos',
-      type: 'bar',
-      stack: 'revenue',
-      data: timeline.value.map((row) => row.new_customer_revenue),
-      itemStyle: { color: CATEGORICAL_COLORS[0] },
-      barMaxWidth: 28,
-    },
-    {
-      name: 'Recorrentes',
-      type: 'bar',
-      stack: 'revenue',
-      data: timeline.value.map((row) => row.returning_customer_revenue),
-      itemStyle: { color: CATEGORICAL_COLORS[1], borderRadius: hasUnknownRevenue.value ? 0 : [4, 4, 0, 0] },
-      barMaxWidth: 28,
-    },
-  ]
-
-  if (hasUnknownRevenue.value) {
-    series.push({
-      name: 'Sem e-mail',
-      type: 'bar',
-      stack: 'revenue',
-      data: timeline.value.map((row) => row.unknown_customer_revenue),
-      itemStyle: { color: CHART_INK.muted, borderRadius: [4, 4, 0, 0] },
-      barMaxWidth: 28,
-    })
-  }
-
-  return {
-    textStyle: CHART_TEXT_STYLE,
-    grid: CHART_GRID,
-    legend: { top: 0, right: 0, itemWidth: 14, itemHeight: 8, textStyle: CHART_TEXT_STYLE },
-    tooltip: {
-      trigger: 'axis',
-      formatter(params) {
-        const row = timeline.value[params[0]?.dataIndex] || {}
-        const lines = [
-          `<strong>${formatBucketLabel(row.date, granularity.value)}</strong>`,
-          `Novos: ${formatMoney(row.new_customer_revenue)}`,
-          `Recorrentes: ${formatMoney(row.returning_customer_revenue)}`,
-        ]
-        if (hasUnknownRevenue.value) lines.push(`Sem e-mail: ${formatMoney(row.unknown_customer_revenue)}`)
-        return lines.join('<br />')
-      },
-    },
-    xAxis: {
-      type: 'category',
-      data: timeline.value.map((row) => formatBucketLabel(row.date, granularity.value)),
-      axisLabel: { color: CHART_INK.muted },
-      axisLine: { lineStyle: { color: CHART_INK.grid } },
-      axisTick: { show: false },
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: { color: CHART_INK.muted, formatter: (value) => formatCompactMoney(value) },
-      splitLine: { lineStyle: { color: CHART_INK.grid } },
-    },
-    series,
-  }
+// ---- 2) % de pedidos que são recompra ----
+const repeatOrderShare = computed(() => data.value?.repeat_order_share || null)
+const repeatOrderTimeline = computed(() => repeatOrderShare.value?.timeline || [])
+const repeatOrderDetail = computed(() => {
+  if (!repeatOrderShare.value) return ''
+  return `${repeatOrderShare.value.repeat_orders}/${repeatOrderShare.value.total_orders} pedidos são 2ª+ compra do cliente (histórico completo)`
+})
+const repeatOrderNote = computed(() => {
+  const count = repeatOrderShare.value?.orders_without_customer_email_count
+  if (!count) return ''
+  return `${count} pedido(s) do período sem e-mail capturado — fora do cálculo.`
 })
 
-const rfmSegments = computed(() => data.value?.rfm_segments || [])
+// ---- 3) Tempo até a recompra ----
+const gapHistogram = computed(() => data.value?.repurchase_gap_histogram || null)
+
+// ---- 4) Produtos mais recomprados ----
+const productRankings = computed(() => data.value?.repeat_product_rankings || null)
+const minCustomersThreshold = computed(() => productRankings.value?.min_customers_threshold ?? 20)
+
+const volumeRankingEntries = computed(() =>
+  (productRankings.value?.by_volume || []).map((p) => ({ label: p.sku, name: p.name, value: p.repeat_purchase_count }))
+)
+const pctRankingEntries = computed(() =>
+  (productRankings.value?.by_customer_pct || []).map((p) => ({ label: p.sku, name: p.name, value: p.repeat_customers_pct }))
+)
 </script>
 
 <template>
@@ -163,64 +121,44 @@ const rfmSegments = computed(() => data.value?.rfm_segments || [])
     />
 
     <template v-else-if="supported">
-      <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
-        <ExecutiveKpiCard
-          class="sm:col-span-1"
-          label="Taxa de recompra"
-          :value="repeatRateValue"
-          :delta-pct="repeatRate?.vs_previous_pct ?? null"
-          :detail="repeatRateDetail"
-          :note="ordersWithoutEmailNote"
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <RepeatPurchaseRateChart
+          :timeline="repeatPurchaseTimeline"
+          :granularity="granularity"
+          :value-pct="repeatPurchaseRate?.value_pct ?? null"
+          :delta-pct="repeatPurchaseRate?.vs_previous_pct ?? null"
+          :detail="repeatPurchaseDetail"
+          :note="repeatPurchaseNote"
+        />
+        <RepeatOrderShareChart
+          :timeline="repeatOrderTimeline"
+          :granularity="granularity"
+          :value-pct="repeatOrderShare?.value_pct ?? null"
+          :detail="repeatOrderDetail"
+          :note="repeatOrderNote"
         />
       </div>
 
-      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 class="text-sm font-semibold text-slate-900">Receita: clientes novos vs recorrentes</h3>
-        <p class="mt-0.5 text-xs text-slate-400">
-          "Novo" considera o histórico completo do cliente, não só o período selecionado.
-        </p>
-        <div v-if="timeline.length === 0" class="empty-frame flex items-center justify-center text-sm text-slate-400">
-          Sem dados no período.
-        </div>
-        <v-chart v-else class="mt-3 h-72 w-full" :option="revenueChartOption" autoresize />
-      </div>
+      <RepurchaseGapHistogramChart
+        :buckets="gapHistogram?.buckets || []"
+        :median-days="gapHistogram?.median_days ?? null"
+        :sample-size="gapHistogram?.sample_size ?? 0"
+      />
 
-      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 class="text-sm font-semibold text-slate-900">Segmentação RFM</h3>
-        <p class="mt-0.5 text-xs text-slate-400">
-          Recência, frequência e valor monetário sobre o histórico completo do cliente. Ordenado por receita total.
-        </p>
-
-        <div v-if="rfmSegments.length === 0" class="empty-frame flex items-center justify-center text-sm text-slate-400">
-          Sem dados no período.
-        </div>
-        <table v-else class="mt-3 w-full text-sm">
-          <thead>
-            <tr class="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <th class="pb-2 pr-2">Segmento</th>
-              <th class="pb-2 pr-2 text-right">Clientes</th>
-              <th class="pb-2 pr-2 text-right">% da base</th>
-              <th class="pb-2 pr-2 text-right">Receita total</th>
-              <th class="pb-2 text-right">Ticket médio</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="row in rfmSegments" :key="row.segment">
-              <td class="py-2 pr-2 text-slate-800">{{ row.segment }}</td>
-              <td class="py-2 pr-2 text-right tabular-nums text-slate-500">{{ row.customers_count }}</td>
-              <td class="py-2 pr-2 text-right tabular-nums text-slate-500">{{ formatPct(row.pct_of_base) }}</td>
-              <td class="py-2 pr-2 text-right font-medium tabular-nums text-slate-900">{{ formatMoney(row.total_revenue) }}</td>
-              <td class="py-2 text-right tabular-nums text-slate-500">{{ formatMoney(row.avg_order_value) }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <HorizontalRankingChart
+          title="Produtos mais recomprados — volume"
+          subtitle="Total de recompras por produto (histórico completo)"
+          :entries="volumeRankingEntries"
+        />
+        <HorizontalRankingChart
+          title="Produtos mais recomprados — % de clientes"
+          :subtitle="`% de clientes com 2+ compras do produto (mínimo ${minCustomersThreshold} clientes únicos)`"
+          :entries="pctRankingEntries"
+          :value-formatter="(v) => formatPct(v)"
+          :axis-formatter="(v) => `${v}%`"
+        />
       </div>
     </template>
   </section>
 </template>
-
-<style scoped>
-.empty-frame {
-  height: 160px;
-}
-</style>
