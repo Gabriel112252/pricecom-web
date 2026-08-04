@@ -7,6 +7,7 @@ import SidebarItem from './SidebarItem.vue'
 import SidebarSubmenu from './SidebarSubmenu.vue'
 import {
   LayoutDashboard,
+  Users,
   ShoppingCart,
   Package,
   Boxes,
@@ -31,6 +32,7 @@ const { collapsed, toggleCollapsed, mobileOpen, closeMobile } = useSidebar()
 // gatilho é uma tarefa diferente de olhar o saldo atual.
 const MAIN_ITEMS = [
   { label: 'Dashboard', to: { name: 'dashboard' }, icon: LayoutDashboard },
+  { label: 'Afiliados', to: { name: 'affiliates' }, icon: Users },
   { label: 'Pedidos', to: { name: 'orders' }, icon: ShoppingCart },
   { label: 'Produtos', to: { name: 'products' }, icon: Package },
   { label: 'Estoque', to: { name: 'inventory' }, icon: Boxes },

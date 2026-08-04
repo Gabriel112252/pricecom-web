@@ -27,6 +27,12 @@ const routes = [
         meta: { title: 'Dashboard' },
       },
       {
+        path: 'afiliados',
+        name: 'affiliates',
+        component: () => import('@/views/Affiliates/Affiliates.vue'),
+        meta: { title: 'Afiliados' },
+      },
+      {
         path: 'pedidos',
         name: 'orders',
         component: () => import('@/views/PlaceholderView.vue'),
