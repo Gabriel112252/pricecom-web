@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import api from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
+import AffiliateDetailDrawer from './AffiliateDetailDrawer.vue'
 
 const props = defineProps({
   campaignId: { type: [Number, String], required: true },
@@ -32,6 +33,7 @@ const loading = ref(false)
 const errorMessage = ref('')
 const recipients = ref([])
 const statusFilter = ref('all')
+const detailCreatorId = ref(null)
 
 async function load() {
   loading.value = true
@@ -101,7 +103,12 @@ const filteredRecipients = computed(() => {
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="recipient in filteredRecipients" :key="recipient.id">
+            <tr
+              v-for="recipient in filteredRecipients"
+              :key="recipient.id"
+              class="cursor-pointer hover:bg-slate-50"
+              @click="detailCreatorId = recipient.affiliate_creator_id"
+            >
               <td class="py-2 pr-3">
                 <p class="font-medium text-slate-900">{{ recipient.nickname || '—' }}</p>
                 <p
@@ -123,5 +130,7 @@ const filteredRecipients = computed(() => {
         </table>
       </div>
     </div>
+
+    <AffiliateDetailDrawer v-if="detailCreatorId" :creator-id="detailCreatorId" @close="detailCreatorId = null" />
   </div>
 </template>

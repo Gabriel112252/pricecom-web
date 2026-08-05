@@ -72,7 +72,7 @@ async function sendMessage() {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-40 flex justify-end bg-slate-900/50" @click.self="emit('close')">
+  <div class="fixed inset-0 z-50 flex justify-end bg-slate-900/50" @click.self="emit('close')">
     <div class="flex h-full w-full max-w-md flex-col overflow-y-auto bg-white p-6 shadow-xl">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-semibold text-slate-900">Detalhe do criador</h2>
