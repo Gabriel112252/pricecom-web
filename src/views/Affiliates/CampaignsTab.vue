@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import api from '@/lib/api'
 import InlineAlertBanner from '../Dashboard/InlineAlertBanner.vue'
 import AffiliateCampaignFormModal from './AffiliateCampaignFormModal.vue'
+import AffiliateCampaignRecipientsModal from './AffiliateCampaignRecipientsModal.vue'
 
 const STATUS_LABELS = {
   draft: 'Rascunho',
@@ -14,6 +15,7 @@ const loading = ref(false)
 const errorMessage = ref('')
 const campaigns = ref([])
 const showForm = ref(false)
+const selectedCampaign = ref(null)
 
 async function load() {
   loading.value = true
@@ -33,6 +35,10 @@ onMounted(load)
 function onCreated() {
   showForm.value = false
   load()
+}
+
+function openRecipients(campaign) {
+  selectedCampaign.value = campaign
 }
 </script>
 
@@ -60,7 +66,15 @@ function onCreated() {
     <p v-else-if="campaigns.length === 0" class="text-sm text-slate-400">Nenhuma campanha disparada ainda.</p>
 
     <div v-else class="space-y-3">
-      <div v-for="campaign in campaigns" :key="campaign.id" class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div
+        v-for="campaign in campaigns"
+        :key="campaign.id"
+        class="cursor-pointer rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-300 hover:shadow-md"
+        role="button"
+        tabindex="0"
+        @click="openRecipients(campaign)"
+        @keydown.enter="openRecipients(campaign)"
+      >
         <div class="flex items-center justify-between">
           <p class="font-medium text-slate-900">{{ campaign.name }}</p>
           <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
@@ -89,9 +103,16 @@ function onCreated() {
             </p>
           </div>
         </div>
+        <p class="mt-3 text-right text-xs font-medium text-indigo-600">Ver destinatários →</p>
       </div>
     </div>
 
     <AffiliateCampaignFormModal v-if="showForm" @close="showForm = false" @created="onCreated" />
+    <AffiliateCampaignRecipientsModal
+      v-if="selectedCampaign"
+      :campaign-id="selectedCampaign.id"
+      :campaign-name="selectedCampaign.name"
+      @close="selectedCampaign = null"
+    />
   </div>
 </template>
