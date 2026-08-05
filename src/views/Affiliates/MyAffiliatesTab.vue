@@ -107,7 +107,13 @@ async function goToPage(newPage) {
               @click="openDetail(row)"
             >
               <td class="flex items-center gap-2 px-4 py-2">
-                <img v-if="row.avatar_url" :src="row.avatar_url" class="h-6 w-6 rounded-full object-cover" alt="" />
+                <span v-if="row.avatar_url" class="relative inline-block h-6 w-6 shrink-0">
+                  <img :src="row.avatar_url" class="h-6 w-6 rounded-full object-cover" alt="" />
+                  <span
+                    v-if="row.has_unread"
+                    class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-white bg-red-500"
+                  />
+                </span>
                 <span class="font-medium text-slate-900">{{ row.nickname || row.username || row.creator_open_id }}</span>
               </td>
               <td class="px-4 py-2 text-slate-600">{{ STATUS_LABELS[row.collaboration_status] || row.collaboration_status || '—' }}</td>
