@@ -1,6 +1,7 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import api from '@/lib/api'
+import { formatDateTime } from '@/lib/format'
 import { useToast } from '@/composables/useToast'
 
 const props = defineProps({
@@ -14,6 +15,11 @@ const creator = ref(null)
 const messageContent = ref('')
 const sending = ref(false)
 
+const messages = ref([])
+const messagesLoading = ref(false)
+const messagesErrorMessage = ref('')
+const messagesSyncFailed = ref(false)
+
 async function load() {
   loading.value = true
   try {
@@ -26,7 +32,27 @@ async function load() {
   }
 }
 
+// Sincroniza (Get Message in the Conversation, paginado) e recarrega o
+// histórico. Pode demorar mais que o resto do drawer por causa da
+// paginação — loading próprio, e uma falha aqui (ex. rate limit) não deve
+// derrubar o restante do drawer, só avisar e deixar "Enviar mensagem"
+// funcionando normalmente.
+async function loadMessages() {
+  messagesLoading.value = true
+  messagesErrorMessage.value = ''
+  try {
+    const { data } = await api.get(`/affiliates/creators/${props.creatorId}/messages`)
+    messages.value = data.rows || []
+    messagesSyncFailed.value = !!data.sync_failed
+  } catch (e) {
+    messagesErrorMessage.value = e.response?.data?.errors?.[0] || 'Não foi possível carregar o histórico de mensagens.'
+  } finally {
+    messagesLoading.value = false
+  }
+}
+
 onMounted(load)
+watch(() => props.creatorId, loadMessages, { immediate: true })
 
 async function sendMessage() {
   if (!messageContent.value.trim()) return
@@ -36,7 +62,7 @@ async function sendMessage() {
     toast.success('Mensagem enviada.')
     messageContent.value = ''
     emit('sent')
-    await load()
+    await Promise.all([ load(), loadMessages() ])
   } catch (e) {
     toast.error(e.response?.data?.errors?.[0] || 'Não foi possível enviar a mensagem.')
   } finally {
@@ -83,10 +109,43 @@ async function sendMessage() {
           </div>
         </dl>
 
-        <p class="mt-4 text-xs text-slate-400">
-          Histórico de mensagens da conversa ainda não está disponível nesta versão — o endpoint de leitura de
-          thread completa não foi confirmado na API de Afiliados.
-        </p>
+        <div class="mt-4 border-t border-slate-200 pt-4">
+          <p class="text-xs font-medium text-slate-500">Histórico de mensagens</p>
+
+          <div v-if="messagesLoading && messages.length === 0" class="mt-2 text-xs text-slate-400">
+            Sincronizando histórico...
+          </div>
+          <p v-else-if="messagesErrorMessage" class="mt-2 text-xs text-red-600">{{ messagesErrorMessage }}</p>
+          <template v-else>
+            <p v-if="messagesSyncFailed" class="mt-2 text-xs text-amber-700">
+              Não foi possível sincronizar as mensagens mais recentes agora — mostrando o histórico já salvo.
+            </p>
+            <p v-if="messages.length === 0" class="mt-2 text-xs text-slate-400">Nenhuma mensagem ainda.</p>
+            <div v-else class="mt-2 max-h-64 space-y-2 overflow-y-auto pr-1">
+              <div
+                v-for="message in messages"
+                :key="message.id"
+                class="flex"
+                :class="message.direction === 'outbound' ? 'justify-end' : 'justify-start'"
+              >
+                <div class="max-w-[80%]">
+                  <div
+                    class="rounded-lg px-3 py-2 text-sm"
+                    :class="message.direction === 'outbound' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'"
+                  >
+                    {{ message.content }}
+                  </div>
+                  <p
+                    class="mt-0.5 text-[10px] text-slate-400"
+                    :class="message.direction === 'outbound' ? 'text-right' : 'text-left'"
+                  >
+                    {{ formatDateTime(message.sent_at) }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
 
         <div class="mt-6 border-t border-slate-200 pt-4">
           <label class="text-xs font-medium text-slate-500">Enviar mensagem</label>
