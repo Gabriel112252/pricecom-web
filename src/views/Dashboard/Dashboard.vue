@@ -31,6 +31,7 @@ import AovByChannelSeriesChart from './AovByChannelSeriesChart.vue'
 import TopProductsByRevenueChart from './TopProductsByRevenueChart.vue'
 import TopProductsByMarginChart from './TopProductsByMarginChart.vue'
 import ProductTurnoverSummary from './ProductTurnoverSummary.vue'
+import ProductSearch from './ProductSearch.vue'
 import ValueAtRiskCard from './ValueAtRiskCard.vue'
 import OldestConflictCard from './OldestConflictCard.vue'
 import ResolutionRateChart from './ResolutionRateChart.vue'
@@ -269,6 +270,7 @@ function couponDetail() {
         <!-- Produtos -->
         <section v-show="activeTab === 'products'" class="space-y-6">
           <ProductDataCoverageBanner :coverage="summary.tiktok_product_data_coverage || {}" />
+          <ProductSearch :from="from" :to="to" :channel-ids="channelIds" />
           <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <TopProductsByRevenueChart :class="{ 'lg:col-span-2': !marginDataAvailable }" :products="summary.top_products_by_revenue" />
             <TopProductsByMarginChart v-if="marginDataAvailable" :products="summary.top_products_by_margin" />
