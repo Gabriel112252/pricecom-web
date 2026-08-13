@@ -45,6 +45,11 @@ const STATUS_MAP = {
   approved: { label: 'Aprovado', dot: 'bg-blue-500', classes: 'bg-blue-50 text-blue-700 ring-blue-600/20' },
   published: { label: 'Publicado', dot: 'bg-emerald-500', classes: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' },
   rejected: { label: 'Rejeitado', dot: 'bg-red-500', classes: 'bg-red-50 text-red-700 ring-red-600/20' },
+  // Usuário (User#active) — chaves próprias, não reaproveita active/inactive
+  // acima (que significam "canal conectado", um conceito diferente).
+  user_active: { label: 'Ativo', dot: 'bg-emerald-500', classes: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' },
+  user_inactive: { label: 'Inativo', dot: 'bg-slate-400', classes: 'bg-slate-100 text-slate-600 ring-slate-500/20' },
+  invitation_pending: { label: 'Convite pendente', dot: 'bg-amber-500', classes: 'bg-amber-50 text-amber-700 ring-amber-600/20' },
 }
 
 const config = computed(() => STATUS_MAP[props.status] ?? STATUS_MAP.idle)

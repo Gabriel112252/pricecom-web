@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { formatDateTime } from '@/lib/format'
 import StatusBadge from '@/components/StatusBadge.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import TestimonialFormModal from './TestimonialFormModal.vue'
 import TestimonialBulkImportModal from './TestimonialBulkImportModal.vue'
 
@@ -133,12 +134,8 @@ async function destroyTestimonial(testimonial) {
 
 <template>
   <div class="space-y-6 p-6 lg:p-8">
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-semibold text-slate-900">Depoimentos</h1>
-        <p class="mt-1 text-sm text-slate-500">Curadoria de depoimentos de clientes pra geração de conteúdo de marketing.</p>
-      </div>
-      <div v-if="auth.isAdmin" class="flex gap-2">
+    <PageHeader title="Depoimentos" subtitle="Curadoria de depoimentos de clientes pra geração de conteúdo de marketing.">
+      <template v-if="auth.isAdmin" #actions>
         <button
           type="button"
           class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
@@ -153,8 +150,8 @@ async function destroyTestimonial(testimonial) {
         >
           Novo depoimento
         </button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <div v-if="!auth.isAdmin" class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
       Criar, editar ou mudar o status de um depoimento exige acesso de administrador — você pode consultar a lista normalmente.

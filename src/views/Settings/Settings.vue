@@ -3,8 +3,11 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import PageHeader from '@/components/PageHeader.vue'
 import PaymentFeeRulesSection from './PaymentFeeRulesSection.vue'
 import StockAlertRulesSection from './StockAlertRulesSection.vue'
+import McpTokenSection from './McpTokenSection.vue'
+import McpConsentBanner from './McpConsentBanner.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -70,7 +73,9 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6 p-6 lg:p-8">
-    <h1 class="text-2xl font-semibold text-slate-900">Configurações</h1>
+    <PageHeader title="Configurações" />
+
+    <McpConsentBanner />
 
     <section class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div>
@@ -120,6 +125,8 @@ onMounted(() => {
           </div>
         </template>
       </div>
+
+      <McpTokenSection />
 
       <PaymentFeeRulesSection />
       <StockAlertRulesSection />

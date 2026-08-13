@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/lib/api'
 import { formatMoney, formatMoneyOrDash, formatPct } from '@/lib/format'
 import { DASHBOARD_TABS } from './lib/tabs'
+import PageHeader from '@/components/PageHeader.vue'
+import TabNav from '@/components/TabNav.vue'
 import ProductDataCoverageBanner from './ProductDataCoverageBanner.vue'
 import PeriodFilter from './PeriodFilter.vue'
 import ChannelFilter from './ChannelFilter.vue'
@@ -134,24 +136,17 @@ function couponDetail() {
 
 <template>
   <div class="space-y-6 p-6 lg:p-8">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h1 class="text-2xl font-semibold text-slate-900">Dashboard</h1>
-        <p class="mt-1 text-sm text-slate-500">Visão geral operacional do hub Pricecom.</p>
-      </div>
+    <PageHeader title="Dashboard" subtitle="Visão geral operacional do hub Pricecom.">
       <!-- Escondido só na subtab Yampi·Pagar.me: ela tem seu próprio
            filtro local (gateway + data de pagamento) com escopo diferente
            do filtro global. As subtabs Consolidado e TikTok Shop usam o
            mesmo período/canal do resto do dashboard, então precisam do
            filtro global visível. -->
-      <div
-        v-if="activeTab !== 'finance' || financeSubtab !== 'yampi_pagarme'"
-        class="flex flex-wrap items-center gap-2"
-      >
+      <template v-if="activeTab !== 'finance' || financeSubtab !== 'yampi_pagarme'" #actions>
         <ChannelFilter :model-value="channelIds" @update:model-value="handleChannelChange" />
         <PeriodFilter :from="from" :to="to" @change="handlePeriodChange" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <div v-if="loading && !summary" class="text-sm text-slate-500">Carregando visão geral...</div>
     <div v-else-if="errorMessage" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -159,26 +154,7 @@ function couponDetail() {
     </div>
 
     <template v-else-if="summary">
-      <!-- isolate + overflow-hidden: o underline indigo da tab ativa fica
-           contido na própria barra, sem pintar sobre os cards abaixo -->
-      <div class="relative isolate overflow-hidden border-b border-slate-200">
-        <nav class="flex gap-1">
-          <button
-            v-for="tab in DASHBOARD_TABS"
-            :key="tab.key"
-            type="button"
-            class="border-b-2 px-4 py-2.5 text-sm font-medium transition"
-            :class="
-              activeTab === tab.key
-                ? 'border-indigo-500 text-indigo-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            "
-            @click="activeTab = tab.key"
-          >
-            {{ tab.label }}
-          </button>
-        </nav>
-      </div>
+      <TabNav :tabs="DASHBOARD_TABS" v-model="activeTab" />
 
       <div class="space-y-6 transition-opacity" :class="{ 'opacity-60': loading }">
         <!-- Visão Geral -->

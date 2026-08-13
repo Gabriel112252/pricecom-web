@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
 import StatusBadge from '@/components/StatusBadge.vue'
+import PageHeader from '@/components/PageHeader.vue'
 
 const STATUS_OPTIONS = ['pending', 'partial', 'paid', 'overdue', 'disputed', 'canceled']
 
@@ -124,20 +125,18 @@ function formatDate(value) {
 
 <template>
   <div class="space-y-10 p-6 lg:p-8">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-semibold text-slate-900">Financeiro</h1>
-        <p class="mt-1 text-sm text-slate-500">Conciliação de repasses e recebíveis por fonte financeira.</p>
-      </div>
-      <button
-        type="button"
-        class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
-        :disabled="loading"
-        @click="loadAll"
-      >
-        Atualizar
-      </button>
-    </div>
+    <PageHeader title="Financeiro" subtitle="Conciliação de repasses e recebíveis por fonte financeira.">
+      <template #actions>
+        <button
+          type="button"
+          class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+          :disabled="loading"
+          @click="loadAll"
+        >
+          Atualizar
+        </button>
+      </template>
+    </PageHeader>
 
     <p v-if="errorMessage" class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">{{ errorMessage }}</p>
 

@@ -5,6 +5,8 @@ import { useChannelCredentials } from './composables/useChannelCredentials'
 import { useIdworks } from './composables/useIdworks'
 import { usePagarme } from './composables/usePagarme'
 import { useToast } from '@/composables/useToast'
+import PageHeader from '@/components/PageHeader.vue'
+import TabNav from '@/components/TabNav.vue'
 import ChannelCard from './ChannelCard.vue'
 import SimpleCredentialCard from './SimpleCredentialCard.vue'
 import DataSourceConfigSection from './DataSourceConfigSection.vue'
@@ -62,36 +64,17 @@ onMounted(() => {
 
 <template>
   <div class="space-y-8 p-6 lg:p-8">
-    <div>
-      <h1 class="text-2xl font-semibold text-slate-900">Integrações</h1>
-      <p class="mt-1 text-sm text-slate-500">
-        Conecte cada canal de vendas para sincronizar produtos e estoque automaticamente.
-      </p>
-    </div>
+    <PageHeader
+      title="Integrações"
+      subtitle="Conecte cada canal de vendas para sincronizar produtos e estoque automaticamente."
+    />
 
     <div v-if="loading" class="text-sm text-slate-500">Carregando...</div>
     <div v-else-if="errorMessage" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
       {{ errorMessage }}
     </div>
 
-    <div class="border-b border-slate-200">
-      <nav class="flex gap-1">
-        <button
-          v-for="tab in tabs"
-          :key="tab.key"
-          type="button"
-          class="border-b-2 px-4 py-2.5 text-sm font-medium transition"
-          :class="
-            activeTab === tab.key
-              ? 'border-indigo-500 text-indigo-700'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
-          "
-          @click="activeTab = tab.key"
-        >
-          {{ tab.label }}
-        </button>
-      </nav>
-    </div>
+    <TabNav :tabs="tabs" v-model="activeTab" />
 
     <section v-show="activeTab === 'marketplaces'" class="space-y-4">
       <div>

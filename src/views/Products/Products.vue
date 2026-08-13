@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/lib/api'
 import { formatMoney } from '@/lib/format'
+import PageHeader from '@/components/PageHeader.vue'
 
 const CHANNEL_LABELS = {
   yampi: 'Yampi',
@@ -60,10 +61,7 @@ function onChannelChange() {
 
 <template>
   <div class="space-y-6 p-6 lg:p-8">
-    <div>
-      <h1 class="text-2xl font-semibold text-slate-900">Produtos</h1>
-      <p class="mt-1 text-sm text-slate-500">Cadastro de produtos, kits e giro real por SKU.</p>
-    </div>
+    <PageHeader title="Produtos" subtitle="Cadastro de produtos, kits e giro real por SKU." />
 
     <div class="flex flex-wrap items-center gap-2">
       <input

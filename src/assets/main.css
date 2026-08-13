@@ -1,1 +1,47 @@
 @import "tailwindcss";
+
+/*
+ * Pricecom design tokens — ver DESIGN_SYSTEM.md na raiz de pricecom-web
+ * para o racional completo (paleta, tipografia, espaçamento).
+ *
+ * A ação de maior alavancagem aqui é remapear a rampa "indigo" do Tailwind
+ * para a rampa teal da marca: ~90% do código já usa bg-indigo-600,
+ * text-indigo-700, border-indigo-500 etc. como cor de ação primária.
+ * Redefinindo os tokens em vez de caçar cada `indigo-*` arquivo por arquivo,
+ * toda a interface é reskinada de uma vez, sem tocar em nenhuma tela — e
+ * sem risco de regressão de comportamento, já que é só troca de valor de
+ * variável CSS.
+ *
+ * 600/700/800/900 foram deslocados um degrau (usam os valores reais de
+ * teal-700/800/900/950) em vez de mapear 1:1, porque teal-600 puro
+ * (#0d9488) só passa ~3.7:1 de contraste com texto branco — insuficiente
+ * para o texto de botão (precisa AA 4.5:1). teal-700 (#0f766e) no lugar do
+ * indigo-600 dá ~5.5:1.
+ */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --color-indigo-50: #f0fdfa;
+  --color-indigo-100: #ccfbf1;
+  --color-indigo-200: #99f6e4;
+  --color-indigo-300: #5eead4;
+  --color-indigo-400: #2dd4bf;
+  --color-indigo-500: #14b8a6;
+  --color-indigo-600: #0f766e;
+  --color-indigo-700: #115e59;
+  --color-indigo-800: #134e4a;
+  --color-indigo-900: #042f2e;
+  --color-indigo-950: #021c1b;
+
+  /* Marca — usado na sidebar, topbar e superfícies "âncora" (não em
+     controles interativos comuns; para isso, use indigo-*, que é o token
+     de ação primária acima). */
+  --color-brand-navy: #0b1e3d;
+  --color-brand-navy-light: #16294f;
+  --color-brand-navy-dark: #071630;
+  --color-brand-teal: #14b8a6;
+}
+
+body {
+  font-family: var(--font-sans);
+}

@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import api from '@/lib/api'
 import { useToast } from '@/composables/useToast'
 import { useAuditConflicts } from './composables/useAuditConflicts'
+import PageHeader from '@/components/PageHeader.vue'
 import ConflictTabs from './ConflictTabs.vue'
 import ConflictFilters from './ConflictFilters.vue'
 import ConflictTable from './ConflictTable.vue'
@@ -99,10 +100,7 @@ async function handleAction(status, note) {
 
 <template>
   <div class="space-y-6 p-6 lg:p-8">
-    <div>
-      <h1 class="text-2xl font-semibold text-slate-900">Auditoria</h1>
-      <p class="mt-1 text-sm text-slate-500">Conflitos de custo, NF e repasse detectados automaticamente.</p>
-    </div>
+    <PageHeader title="Auditoria" subtitle="Conflitos de custo, NF e repasse detectados automaticamente." />
 
     <ConflictTabs :active-status="activeStatus" :counts="statusCounts" @change="activeStatus = $event" />
 

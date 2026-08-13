@@ -16,6 +16,12 @@ const routes = [
     meta: { public: true },
   },
   {
+    path: '/aceitar-convite',
+    name: 'accept-invitation',
+    component: () => import('@/views/AcceptInvitationView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/',
     component: () => import('@/layouts/AppLayout.vue'),
     children: [
@@ -79,6 +85,12 @@ const routes = [
         name: 'integrations',
         component: () => import('@/views/Integrations/Integrations.vue'),
         meta: { title: 'Integrações', requiresAdmin: true },
+      },
+      {
+        path: 'usuarios',
+        name: 'users',
+        component: () => import('@/views/Users/UsersView.vue'),
+        meta: { title: 'Usuários', requiresAdmin: true },
       },
       {
         path: 'configuracoes',

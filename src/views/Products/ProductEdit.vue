@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '@/lib/api'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import PageHeader from '@/components/PageHeader.vue'
 import KitBuilder from './KitBuilder.vue'
 import ProductTurnover from './ProductTurnover.vue'
 
@@ -57,12 +58,17 @@ function handleKitSaved() {
 
 <template>
   <div class="space-y-6 p-6 lg:p-8">
-    <div>
-      <button type="button" class="text-sm text-slate-500 hover:text-slate-700" @click="router.push({ name: 'products' })">
-        ← Produtos
-      </button>
-      <h1 class="mt-1 text-2xl font-semibold text-slate-900">{{ product?.name ?? 'Produto' }}</h1>
-    </div>
+    <PageHeader :title="product?.name ?? 'Produto'">
+      <template #eyebrow>
+        <button
+          type="button"
+          class="mb-1 text-sm text-slate-500 hover:text-slate-700"
+          @click="router.push({ name: 'products' })"
+        >
+          ← Produtos
+        </button>
+      </template>
+    </PageHeader>
 
     <div v-if="loading" class="text-sm text-slate-500">Carregando...</div>
     <div v-else-if="errorMessage" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">

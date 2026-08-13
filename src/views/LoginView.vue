@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import logoLockup from '@/assets/pricecom-lockup.png'
 
 const email = ref('')
 const password = ref('')
@@ -32,8 +33,8 @@ async function handleSubmit() {
       class="w-full max-w-sm space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
       @submit.prevent="handleSubmit"
     >
-      <div class="flex items-center gap-2">
-        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0b1e3d] text-sm font-bold text-white">P</span>
+      <div class="flex flex-col items-center gap-3 text-center">
+        <img :src="logoLockup" alt="Pricecom" class="h-24 w-auto" />
         <h1 class="text-xl font-semibold text-slate-900">Entrar no Pricecom Hub</h1>
       </div>
 
