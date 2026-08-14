@@ -69,18 +69,23 @@ const productRowGroups = computed(() =>
 // tabela. Não soma "Pedidos": um pedido com itens de mais de um produto
 // contaria mais de uma vez, o que não é o mesmo que "total de pedidos" —
 // só quantidade e receita foram pedidos, e esses somam sem esse problema.
-const tableTotals = computed(() =>
-  productRowGroups.value.reduce(
-    (totals, group) => {
+const tableTotals = computed(() => {
+  const totals = productRowGroups.value.reduce(
+    (acc, group) => {
       group.rows.forEach((row) => {
-        totals.qty_sold += Number(row.qty_sold || 0)
-        totals.revenue += Number(row.revenue || 0)
+        acc.qty_sold += Number(row.qty_sold || 0)
+        acc.revenue += Number(row.revenue || 0)
       })
-      return totals
+      return acc
     },
     { qty_sold: 0, revenue: 0 },
-  ),
-)
+  )
+
+  // sample_qty_sent soma por PRODUTO (selectedList), não por linha da
+  // tabela — senão um produto vendido em 2 canais contaria a amostra dele 2x.
+  totals.sample_qty_sent = selectedList.value.reduce((sum, item) => sum + Number(item.sample_qty_sent || 0), 0)
+  return totals
+})
 
 async function search(term) {
   loading.value = true
@@ -263,7 +268,12 @@ watch(
         </tbody>
         <tfoot>
           <tr class="border-t-2 border-slate-300 bg-slate-100 font-semibold text-slate-900">
-            <td class="px-3 py-2" colspan="4">Total</td>
+            <td class="px-3 py-2" colspan="4">
+              Total
+              <p v-if="tableTotals.sample_qty_sent > 0" class="mt-0.5 text-xs font-normal text-slate-500">
+                {{ formatQty(tableTotals.sample_qty_sent) }} amostras enviadas no total (não contam como venda)
+              </p>
+            </td>
             <td class="px-3 py-2 text-right tabular-nums">{{ formatQty(tableTotals.qty_sold) }}</td>
             <td class="px-3 py-2 text-right tabular-nums">{{ formatMoney(tableTotals.revenue) }}</td>
           </tr>
