@@ -55,6 +55,10 @@ const productRowGroups = computed(() =>
     sku: item.sku,
     name: item.name,
     groupIndex,
+    // Amostras grátis enviadas a criador/afiliado — nunca é venda, por isso
+    // não entra em by_channel/quantidade nem no Total; é só um texto
+    // secundário sob o nome do produto, pra não sumir do relatório.
+    sampleQtySent: item.sample_qty_sent ?? 0,
     rows: item.by_channel.length
       ? item.by_channel
       : [{ platform: null, orders_count: 0, qty_sold: 0, revenue: 0 }],
@@ -246,6 +250,9 @@ watch(
               </td>
               <td v-if="rowIndex === 0" :rowspan="group.rows.length" class="px-3 py-2 align-top text-slate-700">
                 {{ group.name }}
+                <p v-if="group.sampleQtySent > 0" class="mt-0.5 text-xs font-normal text-slate-400">
+                  {{ formatQty(group.sampleQtySent) }} amostras enviadas
+                </p>
               </td>
               <td class="px-3 py-2 text-slate-700">{{ row.platform ? channelLabel(row.platform) : '—' }}</td>
               <td class="px-3 py-2 text-right tabular-nums text-slate-700">{{ row.orders_count }}</td>

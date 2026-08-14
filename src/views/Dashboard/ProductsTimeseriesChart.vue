@@ -84,6 +84,22 @@ const option = computed(() => ({
     smooth: false,
   })),
 }))
+
+// Amostras grátis (order_type "sample") nunca aparecem na série — é
+// receita/quantidade sempre zero, uma linha tracejada só de zeros não
+// agregaria nada ao gráfico. Total do período por produto, como legenda
+// secundária abaixo do gráfico, na mesma cor da linha (mesmo índice de
+// CATEGORICAL_COLORS que a série usa).
+const sampleCaptions = computed(() =>
+  series.value
+    .map((s, index) => ({
+      sku: s.sku,
+      name: s.name,
+      qty: s.sample_qty_sent ?? 0,
+      color: CATEGORICAL_COLORS[index % CATEGORICAL_COLORS.length],
+    }))
+    .filter((s) => s.qty > 0),
+)
 </script>
 
 <template>
@@ -122,6 +138,13 @@ const option = computed(() => ({
       Carregando...
     </div>
     <v-chart v-else class="chart-frame mt-2 w-full" :option="option" autoresize />
+
+    <div v-if="sampleCaptions.length" class="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500">
+      <span v-for="s in sampleCaptions" :key="s.sku" class="inline-flex items-center gap-1.5">
+        <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: s.color }" />
+        {{ s.sku }} — {{ formatQty(s.qty) }} amostras enviadas
+      </span>
+    </div>
   </div>
 </template>
 
