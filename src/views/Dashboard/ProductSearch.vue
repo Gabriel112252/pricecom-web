@@ -22,12 +22,6 @@ const props = defineProps({
   channelIds: { type: Array, default: () => [] },
 })
 
-// Formato tabela (uma linha por produto+canal, células de SKU/produto
-// mescladas via rowspan) escala mais que cards — cada produto ocupa 1-2
-// linhas em vez de um card inteiro, então o teto sobe de 6 para 10 sem
-// degradar a legibilidade.
-const MAX_SELECTED = 10
-
 const CHANNEL_LABELS = {
   yampi: 'Yampi',
   shopify: 'Shopify',
@@ -49,7 +43,6 @@ const results = ref([])
 const isOpen = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
-const limitWarning = ref('')
 const selectedList = ref([])
 
 const selectedSkus = computed(() => selectedList.value.map((item) => item.sku))
@@ -106,18 +99,11 @@ function selectResult(result) {
 
   if (selectedSkus.value.includes(result.sku)) return
 
-  if (selectedList.value.length >= MAX_SELECTED) {
-    limitWarning.value = `Máximo de ${MAX_SELECTED} produtos na comparação — remova algum antes de adicionar outro.`
-    return
-  }
-
-  limitWarning.value = ''
   selectedList.value = [...selectedList.value, result]
 }
 
 function removeSelected(sku) {
   selectedList.value = selectedList.value.filter((item) => item.sku !== sku)
-  limitWarning.value = ''
 }
 
 function onFocus() {
@@ -193,7 +179,6 @@ watch(
     </div>
 
     <p v-if="errorMessage" class="mt-2 text-sm text-red-600">{{ errorMessage }}</p>
-    <p v-if="limitWarning" class="mt-2 text-sm text-amber-600">{{ limitWarning }}</p>
 
     <div v-if="selectedList.length" class="mt-3 flex flex-wrap gap-2">
       <span
