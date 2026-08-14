@@ -22,7 +22,11 @@ const props = defineProps({
   channelIds: { type: Array, default: () => [] },
 })
 
-const MAX_SELECTED = 6
+// Formato tabela (uma linha por produto+canal, células de SKU/produto
+// mescladas via rowspan) escala mais que cards — cada produto ocupa 1-2
+// linhas em vez de um card inteiro, então o teto sobe de 6 para 10 sem
+// degradar a legibilidade.
+const MAX_SELECTED = 10
 
 const CHANNEL_LABELS = {
   yampi: 'Yampi',
@@ -49,6 +53,20 @@ const limitWarning = ref('')
 const selectedList = ref([])
 
 const selectedSkus = computed(() => selectedList.value.map((item) => item.sku))
+
+// Uma linha por produto+canal (mais granular que o total agregado). Produto
+// sem venda no período/canal vira 1 linha com canal "—" em vez de sumir da
+// tabela. groupIndex alimenta o fundo alternado entre produtos na template.
+const productRowGroups = computed(() =>
+  selectedList.value.map((item, groupIndex) => ({
+    sku: item.sku,
+    name: item.name,
+    groupIndex,
+    rows: item.by_channel.length
+      ? item.by_channel
+      : [{ platform: null, orders_count: 0, qty_sold: 0, revenue: 0 }],
+  })),
+)
 
 async function search(term) {
   loading.value = true
@@ -199,42 +217,42 @@ watch(
       </span>
     </div>
 
-    <div v-if="selectedList.length" class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <div v-for="item in selectedList" :key="item.sku" class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <p class="text-sm font-medium text-slate-800">{{ item.name }}</p>
-        <p class="text-xs text-slate-500">SKU {{ item.sku }}</p>
-
-        <div class="mt-3 grid grid-cols-2 gap-4">
-          <div>
-            <p class="text-xs text-slate-500">Quantidade total vendida</p>
-            <p class="text-2xl font-semibold tabular-nums text-slate-900">{{ formatQty(item.total_qty_sold) }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-500">Receita total</p>
-            <p class="text-2xl font-semibold tabular-nums text-slate-900">{{ formatMoney(item.total_revenue) }}</p>
-          </div>
-        </div>
-
-        <table v-if="item.by_channel.length" class="mt-4 w-full text-sm">
-          <thead>
-            <tr class="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <th class="pb-2 pr-2">Canal</th>
-              <th class="pb-2 pr-2 text-right">Pedidos</th>
-              <th class="pb-2 pr-2 text-right">Quantidade</th>
-              <th class="pb-2 text-right">Receita</th>
+    <div v-if="selectedList.length" class="mt-4 overflow-x-auto rounded-lg border border-slate-200">
+      <table class="w-full min-w-[640px] text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <th class="px-3 py-2">SKU</th>
+            <th class="px-3 py-2">Produto</th>
+            <th class="px-3 py-2">Canal</th>
+            <th class="px-3 py-2 text-right">Pedidos</th>
+            <th class="px-3 py-2 text-right">Quantidade</th>
+            <th class="px-3 py-2 text-right">Receita</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template v-for="group in productRowGroups" :key="group.sku">
+            <tr
+              v-for="(row, rowIndex) in group.rows"
+              :key="`${group.sku}-${row.platform ?? 'none'}`"
+              :class="[
+                group.groupIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/60',
+                rowIndex === 0 && group.groupIndex > 0 ? 'border-t-2 border-slate-200' : 'border-t border-slate-100',
+              ]"
+            >
+              <td v-if="rowIndex === 0" :rowspan="group.rows.length" class="px-3 py-2 align-top font-medium text-slate-700">
+                {{ group.sku }}
+              </td>
+              <td v-if="rowIndex === 0" :rowspan="group.rows.length" class="px-3 py-2 align-top text-slate-700">
+                {{ group.name }}
+              </td>
+              <td class="px-3 py-2 text-slate-700">{{ row.platform ? channelLabel(row.platform) : '—' }}</td>
+              <td class="px-3 py-2 text-right tabular-nums text-slate-700">{{ row.orders_count }}</td>
+              <td class="px-3 py-2 text-right tabular-nums text-slate-700">{{ formatQty(row.qty_sold) }}</td>
+              <td class="px-3 py-2 text-right tabular-nums text-slate-700">{{ formatMoney(row.revenue) }}</td>
             </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="row in item.by_channel" :key="row.platform">
-              <td class="py-2 pr-2 text-slate-700">{{ channelLabel(row.platform) }}</td>
-              <td class="py-2 pr-2 text-right tabular-nums text-slate-700">{{ row.orders_count }}</td>
-              <td class="py-2 pr-2 text-right tabular-nums text-slate-700">{{ formatQty(row.qty_sold) }}</td>
-              <td class="py-2 text-right tabular-nums text-slate-700">{{ formatMoney(row.revenue) }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-else class="mt-3 text-sm text-slate-500">Nenhuma venda no período/canal selecionados.</p>
-      </div>
+          </template>
+        </tbody>
+      </table>
     </div>
     <p v-else class="mt-3 text-sm text-slate-500">Busque por SKU ou nome para adicionar produtos à comparação.</p>
   </div>
