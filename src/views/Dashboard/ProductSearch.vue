@@ -109,11 +109,11 @@ function onInput() {
   }, 300)
 }
 
+// Dropdown fica aberto após selecionar — só fecha no blur (clicar fora,
+// tratado em onBlur) ou se o usuário editar a busca de novo. Isso permite
+// selecionar vários produtos seguidos da mesma lista de resultados, sem
+// precisar redigitar a busca a cada um.
 function selectResult(result) {
-  query.value = ''
-  results.value = []
-  isOpen.value = false
-
   if (selectedSkus.value.includes(result.sku)) return
 
   selectedList.value = [...selectedList.value, result]
