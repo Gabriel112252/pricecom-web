@@ -254,10 +254,15 @@ watch(
                 {{ group.sku }}
               </td>
               <td v-if="rowIndex === 0" :rowspan="group.rows.length" class="px-3 py-2 align-top text-slate-700">
-                {{ group.name }}
-                <p v-if="group.sampleQtySent > 0" class="mt-0.5 text-xs font-normal text-slate-400">
-                  {{ formatQty(group.sampleQtySent) }} amostras enviadas
-                </p>
+                <div class="flex flex-col items-start gap-1">
+                  <span>{{ group.name }}</span>
+                  <span
+                    v-if="group.sampleQtySent > 0"
+                    class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+                  >
+                    {{ formatQty(group.sampleQtySent) }} amostras enviadas
+                  </span>
+                </div>
               </td>
               <td class="px-3 py-2 text-slate-700">{{ row.platform ? channelLabel(row.platform) : '—' }}</td>
               <td class="px-3 py-2 text-right tabular-nums text-slate-700">{{ row.orders_count }}</td>
@@ -269,10 +274,15 @@ watch(
         <tfoot>
           <tr class="border-t-2 border-slate-300 bg-slate-100 font-semibold text-slate-900">
             <td class="px-3 py-2" colspan="4">
-              Total
-              <p v-if="tableTotals.sample_qty_sent > 0" class="mt-0.5 text-xs font-normal text-slate-500">
-                {{ formatQty(tableTotals.sample_qty_sent) }} amostras enviadas no total (não contam como venda)
-              </p>
+              <div class="flex flex-wrap items-center gap-2">
+                <span>Total</span>
+                <span
+                  v-if="tableTotals.sample_qty_sent > 0"
+                  class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+                >
+                  {{ formatQty(tableTotals.sample_qty_sent) }} amostras enviadas no total (não contam como venda)
+                </span>
+              </div>
             </td>
             <td class="px-3 py-2 text-right tabular-nums">{{ formatQty(tableTotals.qty_sold) }}</td>
             <td class="px-3 py-2 text-right tabular-nums">{{ formatMoney(tableTotals.revenue) }}</td>
