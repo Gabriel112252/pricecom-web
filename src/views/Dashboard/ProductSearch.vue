@@ -61,6 +61,23 @@ const productRowGroups = computed(() =>
   })),
 )
 
+// Soma quantidade/receita de todas as linhas produto+canal visíveis na
+// tabela. Não soma "Pedidos": um pedido com itens de mais de um produto
+// contaria mais de uma vez, o que não é o mesmo que "total de pedidos" —
+// só quantidade e receita foram pedidos, e esses somam sem esse problema.
+const tableTotals = computed(() =>
+  productRowGroups.value.reduce(
+    (totals, group) => {
+      group.rows.forEach((row) => {
+        totals.qty_sold += Number(row.qty_sold || 0)
+        totals.revenue += Number(row.revenue || 0)
+      })
+      return totals
+    },
+    { qty_sold: 0, revenue: 0 },
+  ),
+)
+
 async function search(term) {
   loading.value = true
   errorMessage.value = ''
@@ -237,6 +254,13 @@ watch(
             </tr>
           </template>
         </tbody>
+        <tfoot>
+          <tr class="border-t-2 border-slate-300 bg-slate-100 font-semibold text-slate-900">
+            <td class="px-3 py-2" colspan="4">Total</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ formatQty(tableTotals.qty_sold) }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ formatMoney(tableTotals.revenue) }}</td>
+          </tr>
+        </tfoot>
       </table>
     </div>
     <p v-else class="mt-3 text-sm text-slate-500">Busque por SKU ou nome para adicionar produtos à comparação.</p>
