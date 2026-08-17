@@ -23,6 +23,8 @@ function formatQty(value) {
         <tr class="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <th class="pb-2 pr-2">SKU</th>
           <th class="pb-2 pr-2">Produto</th>
+          <th class="pb-2 pr-2 text-right">Avulso</th>
+          <th class="pb-2 pr-2 text-right">Em kit</th>
           <th class="pb-2 text-right">Quantidade vendida</th>
         </tr>
       </thead>
@@ -38,6 +40,8 @@ function formatQty(value) {
               Só via kit
             </span>
           </td>
+          <td class="py-2 pr-2 text-right tabular-nums text-slate-500">{{ formatQty(product.direct_qty) }}</td>
+          <td class="py-2 pr-2 text-right tabular-nums text-slate-500">{{ formatQty(product.kit_qty) }}</td>
           <td class="py-2 text-right font-medium tabular-nums text-slate-900">{{ formatQty(product.total_qty) }}</td>
         </tr>
       </tbody>

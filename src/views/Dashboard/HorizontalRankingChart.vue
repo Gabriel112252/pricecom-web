@@ -5,9 +5,13 @@ import { SEQUENTIAL_BLUE, CHART_INK, CHART_TEXT_STYLE } from '@/lib/chartTheme'
 const props = defineProps({
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },
-  entries: { type: Array, default: () => [] }, // [{ label, name, value }]
+  entries: { type: Array, default: () => [] }, // [{ label, name, value, ...extra }] — extra keys ride along into the tooltip via tooltipFormatter
   valueFormatter: { type: Function, default: (v) => String(v) },
   axisFormatter: { type: Function, default: (v) => String(v) },
+  // Optional richer tooltip — receives the full entry (value/name plus any
+  // extra keys passed in `entries`), returns an HTML string. Falls back to
+  // the plain name+value line when not given.
+  tooltipFormatter: { type: Function, default: null },
 })
 
 // Backend already orders desc (top N); reverse for the chart since echarts
@@ -20,7 +24,7 @@ const option = computed(() => ({
   grid: { left: 8, right: 48, top: 8, bottom: 8, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
   tooltip: {
     trigger: 'item',
-    formatter: (params) => `${params.name}<br/>${props.valueFormatter(params.value)}`,
+    formatter: (params) => (props.tooltipFormatter ? props.tooltipFormatter(params.data) : `${params.name}<br/>${props.valueFormatter(params.value)}`),
   },
   xAxis: {
     type: 'value',
@@ -37,7 +41,7 @@ const option = computed(() => ({
   series: [
     {
       type: 'bar',
-      data: reversed.value.map((e) => ({ value: e.value, name: e.name })),
+      data: reversed.value.map((e) => ({ ...e, value: e.value, name: e.name })),
       barMaxWidth: 20,
       itemStyle: { borderRadius: [0, 4, 4, 0] },
       label: {

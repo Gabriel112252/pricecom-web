@@ -110,8 +110,24 @@ const freightMargin = computed(() => summary.value?.freight_margin ?? {})
 // Products::TopRealSkusSold), só num gadget de ranking em vez de tabela —
 // reaproveita o mesmo HorizontalRankingChart usado na aba idworks.
 const realSkusSoldEntries = computed(() =>
-  (summary.value?.product_turnover_summary ?? []).map((p) => ({ label: p.sku, name: p.name, value: p.total_qty }))
+  (summary.value?.product_turnover_summary ?? []).map((p) => ({
+    label: p.sku,
+    name: p.name,
+    value: p.total_qty,
+    direct_qty: p.direct_qty,
+    kit_qty: p.kit_qty,
+  }))
 )
+// Avulso (vendido sozinho) x em kit (consumido como componente) — os dois
+// sempre somam o total exibido na barra, ver Products::TopRealSkusSold.
+function realSkusSoldTooltip(row) {
+  return [
+    `<strong>${row.name}</strong>`,
+    `Total: ${formatStockQty(row.value)} un.`,
+    `Avulso: ${formatStockQty(row.direct_qty)} un.`,
+    `Em kit: ${formatStockQty(row.kit_qty)} un.`,
+  ].join('<br/>')
+}
 
 // "Pedidos" mostra sempre o total operacional (nunca cai por causa da
 // cobertura TikTok) — o detalhe só soma o recorte de quanto já tem
@@ -265,6 +281,7 @@ function couponDetail() {
               subtitle="Top 10 por quantidade real — kit explodido nos componentes"
               :entries="realSkusSoldEntries"
               :value-formatter="(v) => `${formatStockQty(v)} un.`"
+              :tooltip-formatter="realSkusSoldTooltip"
             />
           </div>
         </section>
