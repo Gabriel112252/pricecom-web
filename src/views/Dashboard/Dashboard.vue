@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/lib/api'
-import { formatMoney, formatMoneyOrDash, formatPct } from '@/lib/format'
+import { formatMoney, formatMoneyOrDash, formatPct, formatStockQty } from '@/lib/format'
 import { DASHBOARD_TABS } from './lib/tabs'
 import PageHeader from '@/components/PageHeader.vue'
 import TabNav from '@/components/TabNav.vue'
@@ -33,6 +33,7 @@ import AovByChannelSeriesChart from './AovByChannelSeriesChart.vue'
 import TopProductsByRevenueChart from './TopProductsByRevenueChart.vue'
 import TopProductsByMarginChart from './TopProductsByMarginChart.vue'
 import ProductTurnoverSummary from './ProductTurnoverSummary.vue'
+import HorizontalRankingChart from './HorizontalRankingChart.vue'
 import ProductSearch from './ProductSearch.vue'
 import ValueAtRiskCard from './ValueAtRiskCard.vue'
 import OldestConflictCard from './OldestConflictCard.vue'
@@ -104,6 +105,13 @@ const regionalSales = computed(() => summary.value?.regional_sales ?? {})
 const coupons = computed(() => summary.value?.coupons ?? {})
 const cartAbandonment = computed(() => summary.value?.cart_abandonment ?? {})
 const freightMargin = computed(() => summary.value?.freight_margin ?? {})
+// "SKUs reais vendidos" — mesmo dado de ProductTurnoverSummary
+// (product_turnover_summary, kit já explodido nos componentes reais via
+// Products::TopRealSkusSold), só num gadget de ranking em vez de tabela —
+// reaproveita o mesmo HorizontalRankingChart usado na aba idworks.
+const realSkusSoldEntries = computed(() =>
+  (summary.value?.product_turnover_summary ?? []).map((p) => ({ label: p.sku, name: p.name, value: p.total_qty }))
+)
 
 // "Pedidos" mostra sempre o total operacional (nunca cai por causa da
 // cobertura TikTok) — o detalhe só soma o recorte de quanto já tem
@@ -251,6 +259,13 @@ function couponDetail() {
             <TopProductsByRevenueChart :class="{ 'lg:col-span-2': !marginDataAvailable }" :products="summary.top_products_by_revenue" />
             <TopProductsByMarginChart v-if="marginDataAvailable" :products="summary.top_products_by_margin" />
             <ProductTurnoverSummary class="lg:col-span-2" :products="summary.product_turnover_summary" />
+            <HorizontalRankingChart
+              class="lg:col-span-2"
+              title="SKUs reais vendidos"
+              subtitle="Top 10 por quantidade real — kit explodido nos componentes"
+              :entries="realSkusSoldEntries"
+              :value-formatter="(v) => `${formatStockQty(v)} un.`"
+            />
           </div>
         </section>
 

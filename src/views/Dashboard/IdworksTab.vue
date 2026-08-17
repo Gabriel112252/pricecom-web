@@ -41,6 +41,9 @@ const revenueByLoja = computed(() => data.value?.revenue_by_loja || {})
 const topProductsEntries = computed(() =>
   (data.value?.top_products || []).map((p) => ({ label: p.sku, name: p.name, value: p.quantity }))
 )
+const realSkusSoldEntries = computed(() =>
+  (data.value?.real_skus_sold || []).map((p) => ({ label: p.sku, name: p.name, value: p.total_qty }))
+)
 </script>
 
 <template>
@@ -70,12 +73,20 @@ const topProductsEntries = computed(() =>
           <SalesByChannelChart :channels="data.channel_breakdown" />
         </div>
 
-        <HorizontalRankingChart
-          title="Produtos mais vendidos"
-          :subtitle="loja ? `Top 10 por quantidade — ${loja === 'hidrabene' ? 'Hidrabene' : 'Anasol'}` : 'Top 10 por quantidade — todas as lojas'"
-          :entries="topProductsEntries"
-          :value-formatter="(v) => `${formatStockQty(v)} un.`"
-        />
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <HorizontalRankingChart
+            title="Produtos mais vendidos"
+            :subtitle="loja ? `Top 10 por SKU do pedido — ${loja === 'hidrabene' ? 'Hidrabene' : 'Anasol'}` : 'Top 10 por SKU do pedido — todas as lojas'"
+            :entries="topProductsEntries"
+            :value-formatter="(v) => `${formatStockQty(v)} un.`"
+          />
+          <HorizontalRankingChart
+            title="SKUs reais vendidos"
+            :subtitle="loja ? `Kit explodido nos componentes — ${loja === 'hidrabene' ? 'Hidrabene' : 'Anasol'}` : 'Kit explodido nos componentes — todas as lojas'"
+            :entries="realSkusSoldEntries"
+            :value-formatter="(v) => `${formatStockQty(v)} un.`"
+          />
+        </div>
       </div>
     </template>
 
