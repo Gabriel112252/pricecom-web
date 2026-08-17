@@ -38,7 +38,7 @@ import ValueAtRiskCard from './ValueAtRiskCard.vue'
 import OldestConflictCard from './OldestConflictCard.vue'
 import ResolutionRateChart from './ResolutionRateChart.vue'
 import ReconciliationBar from './ReconciliationBar.vue'
-import ReconciliationTab from './ReconciliationTab.vue'
+import IdworksTab from './IdworksTab.vue'
 import CustomersTab from './CustomersTab.vue'
 
 function toISODate(date) {
@@ -259,9 +259,9 @@ function couponDetail() {
           <CustomersTab :from="from" :to="to" />
         </section>
 
-        <!-- Reconciliação idworks -->
+        <!-- idworks -->
         <section v-show="activeTab === 'reconciliation'" class="space-y-6">
-          <ReconciliationTab :from="from" :to="to" />
+          <IdworksTab :from="from" :to="to" />
         </section>
 
         <!-- Saúde Operacional -->
