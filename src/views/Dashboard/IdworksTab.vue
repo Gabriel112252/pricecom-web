@@ -7,6 +7,7 @@ import KpiCard from './KpiCard.vue'
 import OrderVolumeChart from './OrderVolumeChart.vue'
 import SalesByChannelChart from './SalesByChannelChart.vue'
 import HorizontalRankingChart from './HorizontalRankingChart.vue'
+import RealSkusSoldChannelTable from './RealSkusSoldChannelTable.vue'
 import ReconciliationTab from './ReconciliationTab.vue'
 
 const props = defineProps({
@@ -41,25 +42,12 @@ const revenueByLoja = computed(() => data.value?.revenue_by_loja || {})
 const topProductsEntries = computed(() =>
   (data.value?.top_products || []).map((p) => ({ label: p.sku, name: p.name, value: p.quantity }))
 )
-const realSkusSoldEntries = computed(() =>
-  (data.value?.real_skus_sold || []).map((p) => ({
-    label: p.sku,
-    name: p.name,
-    value: p.total_qty,
-    direct_qty: p.direct_qty,
-    kit_qty: p.kit_qty,
-  }))
-)
-// Avulso (vendido sozinho) x em kit (consumido como componente) — os dois
-// sempre somam o total exibido na barra, ver Products::TopRealSkusSold.
-function realSkusSoldTooltip(row) {
-  return [
-    `<strong>${row.name}</strong>`,
-    `Total: ${formatStockQty(row.value)} un.`,
-    `Avulso: ${formatStockQty(row.direct_qty)} un.`,
-    `Em kit: ${formatStockQty(row.kit_qty)} un.`,
-  ].join('<br/>')
-}
+// SKUs reais vendidos x canal — o Gabriel pediu esse cruzamento visível
+// direto na tabela (RealSkusSoldChannelTable), não escondido atrás de
+// hover. data.real_skus_sold já traz channel_breakdown por produto (ver
+// Idworks::DashboardStatsService#real_skus_sold), sem precisar recalcular
+// nada aqui — repassa como veio.
+const realSkusSold = computed(() => data.value?.real_skus_sold || [])
 </script>
 
 <template>
@@ -89,21 +77,14 @@ function realSkusSoldTooltip(row) {
           <SalesByChannelChart :channels="data.channel_breakdown" />
         </div>
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <HorizontalRankingChart
-            title="Produtos mais vendidos"
-            :subtitle="loja ? `Top 10 por SKU do pedido — ${loja === 'hidrabene' ? 'Hidrabene' : 'Anasol'}` : 'Top 10 por SKU do pedido — todas as lojas'"
-            :entries="topProductsEntries"
-            :value-formatter="(v) => `${formatStockQty(v)} un.`"
-          />
-          <HorizontalRankingChart
-            title="SKUs reais vendidos"
-            :subtitle="loja ? `Kit explodido nos componentes — ${loja === 'hidrabene' ? 'Hidrabene' : 'Anasol'}` : 'Kit explodido nos componentes — todas as lojas'"
-            :entries="realSkusSoldEntries"
-            :value-formatter="(v) => `${formatStockQty(v)} un.`"
-            :tooltip-formatter="realSkusSoldTooltip"
-          />
-        </div>
+        <HorizontalRankingChart
+          title="Produtos mais vendidos"
+          :subtitle="loja ? `Top 10 por SKU do pedido — ${loja === 'hidrabene' ? 'Hidrabene' : 'Anasol'}` : 'Top 10 por SKU do pedido — todas as lojas'"
+          :entries="topProductsEntries"
+          :value-formatter="(v) => `${formatStockQty(v)} un.`"
+        />
+
+        <RealSkusSoldChannelTable :products="realSkusSold" />
       </div>
     </template>
 
