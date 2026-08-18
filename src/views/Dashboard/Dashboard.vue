@@ -5,6 +5,7 @@ import { formatMoney, formatMoneyOrDash, formatPct, formatStockQty } from '@/lib
 import { DASHBOARD_TABS } from './lib/tabs'
 import PageHeader from '@/components/PageHeader.vue'
 import TabNav from '@/components/TabNav.vue'
+import DashboardSectionSkeleton from './DashboardSectionSkeleton.vue'
 import ProductDataCoverageBanner from './ProductDataCoverageBanner.vue'
 import PeriodFilter from './PeriodFilter.vue'
 import ChannelFilter from './ChannelFilter.vue'
@@ -59,19 +60,40 @@ const financeSubtab = ref(FINANCE_SUBTABS[0].key)
 const loading = ref(true)
 const errorMessage = ref('')
 const summary = ref(null)
+// true até /dashboard/summary_extended (gráficos/tabelas de Vendas,
+// Descontos & Cupons, Produtos e o card consolidado de Financeiro) chegar —
+// essas seções mostram DashboardSectionSkeleton enquanto isso, em vez de
+// travar a tela toda atrás do lote pesado (mesmo padrão de duas etapas do
+// kanban do ScrumFlow: estrutura/conteúdo rápido primeiro, o resto depois).
+const extendedLoading = ref(true)
+// Erro à parte do errorMessage principal — uma falha só no tier lento não
+// pode derrubar a Visão Geral, que já carregou e está correta na tela.
+const extendedErrorMessage = ref('')
 
 async function load() {
   loading.value = true
+  extendedLoading.value = true
   errorMessage.value = ''
+  extendedErrorMessage.value = ''
+  const params = { from: from.value, to: to.value, channel_ids: channelIds.value }
+
   try {
-    const { data } = await api.get('/dashboard/summary', {
-      params: { from: from.value, to: to.value, channel_ids: channelIds.value },
-    })
+    const { data } = await api.get('/dashboard/summary', { params })
     summary.value = data
   } catch (e) {
     errorMessage.value = e.response?.data?.error || 'Não foi possível carregar o dashboard.'
-  } finally {
     loading.value = false
+    return
+  }
+  loading.value = false
+
+  try {
+    const { data: extended } = await api.get('/dashboard/summary_extended', { params })
+    summary.value = { ...summary.value, ...extended }
+  } catch (e) {
+    extendedErrorMessage.value = e.response?.data?.error || 'Não foi possível carregar o restante do dashboard.'
+  } finally {
+    extendedLoading.value = false
   }
 }
 
@@ -227,63 +249,75 @@ function couponDetail() {
 
         <!-- Vendas -->
         <section v-show="activeTab === 'sales'" class="space-y-6">
-          <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <OrderVolumeChart :by-channel-series="summary.orders.by_channel_series" :granularity="granularity" />
-            <RevenueByHourChart :by-channel-series="summary.revenue.by_channel_series" :granularity="granularity" />
-            <ChannelBreakdown :by-channel="summary.revenue.by_channel" />
-            <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" />
-            <AovByChannelSeriesChart :aov-by-channel-series="summary.orders.aov_by_channel_series" :granularity="granularity" />
-          </div>
+          <DashboardSectionSkeleton v-if="extendedLoading" :blocks="4" />
+          <template v-else>
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <OrderVolumeChart :by-channel-series="summary.orders.by_channel_series" :granularity="granularity" />
+              <RevenueByHourChart :by-channel-series="summary.revenue.by_channel_series" :granularity="granularity" />
+              <ChannelBreakdown :by-channel="summary.revenue.by_channel" />
+              <AovByChannelChart :aov-by-channel="summary.orders.aov_by_channel" />
+              <AovByChannelSeriesChart :aov-by-channel-series="summary.orders.aov_by_channel_series" :granularity="granularity" />
+            </div>
 
-          <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
-          <FreightMarginCard :freight-margin="freightMargin" />
+            <CartAbandonmentCard :cart-abandonment="cartAbandonment" />
+            <FreightMarginCard :freight-margin="freightMargin" />
 
-          <!-- Origem de aquisição: TikTok por formato de conteúdo + Yampi por UTM -->
-          <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-            <TiktokContentFormatCard :breakdown="summary.tiktok_content_format_breakdown || {}" />
-            <YampiUtmBreakdownCard :breakdown="summary.yampi_utm_breakdown || {}" />
-          </div>
+            <!-- Origem de aquisição: TikTok por formato de conteúdo + Yampi por UTM -->
+            <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+              <TiktokContentFormatCard :breakdown="summary.tiktok_content_format_breakdown || {}" />
+              <YampiUtmBreakdownCard :breakdown="summary.yampi_utm_breakdown || {}" />
+            </div>
+          </template>
         </section>
 
         <!-- Descontos & Cupons -->
         <section v-show="activeTab === 'discounts'" class="space-y-6">
-          <DiscountCompositionCard :coupons="coupons" :gross-revenue="Number(revenueBreakdown.gross_revenue || 0)" />
-          <DiscountTicketExposureCard
-            :summary="summary.discount_ticket_summary || {}"
-            :products="summary.product_discount_exposure || []"
-          />
-          <CartAbandonmentDiscountBreakdown :cart-abandonment="cartAbandonment" />
+          <DashboardSectionSkeleton v-if="extendedLoading" :blocks="2" />
+          <template v-else>
+            <DiscountCompositionCard :coupons="coupons" :gross-revenue="Number(revenueBreakdown.gross_revenue || 0)" />
+            <DiscountTicketExposureCard
+              :summary="summary.discount_ticket_summary || {}"
+              :products="summary.product_discount_exposure || []"
+            />
+            <CartAbandonmentDiscountBreakdown :cart-abandonment="cartAbandonment" />
+          </template>
         </section>
 
         <!-- Financeiro -->
-        <FinancialTab
-          v-if="activeTab === 'finance'"
-          v-model:active-subtab="financeSubtab"
-          :financial="financial"
-          :coupons="coupons"
-          :granularity="granularity"
-          :from="from"
-          :to="to"
-          :channel-ids="channelIds"
-        />
+        <section v-if="activeTab === 'finance'" class="space-y-6">
+          <DashboardSectionSkeleton v-if="extendedLoading" :blocks="2" />
+          <FinancialTab
+            v-else
+            v-model:active-subtab="financeSubtab"
+            :financial="financial"
+            :coupons="coupons"
+            :granularity="granularity"
+            :from="from"
+            :to="to"
+            :channel-ids="channelIds"
+          />
+        </section>
 
         <!-- Produtos -->
         <section v-show="activeTab === 'products'" class="space-y-6">
-          <ProductDataCoverageBanner :coverage="summary.tiktok_product_data_coverage || {}" />
           <ProductSearch :from="from" :to="to" :channel-ids="channelIds" />
-          <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <TopProductsByRevenueChart :class="{ 'lg:col-span-2': !marginDataAvailable }" :products="summary.top_products_by_revenue" />
-            <TopProductsByMarginChart v-if="marginDataAvailable" :products="summary.top_products_by_margin" />
-            <ProductTurnoverSummary class="lg:col-span-2" :products="summary.product_turnover_summary" />
-            <HorizontalRankingChart
-              class="lg:col-span-2"
-              title="SKUs reais vendidos"
-              subtitle="Top 10 por quantidade real — kit explodido nos componentes"
-              :entries="realSkusSoldEntries"
-              :value-formatter="(v) => `${formatStockQty(v)} un.`"
-              :tooltip-formatter="realSkusSoldTooltip"
-            />
-          </div>
+          <DashboardSectionSkeleton v-if="extendedLoading" :blocks="2" />
+          <template v-else>
+            <ProductDataCoverageBanner :coverage="summary.tiktok_product_data_coverage || {}" />
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <TopProductsByRevenueChart :class="{ 'lg:col-span-2': !marginDataAvailable }" :products="summary.top_products_by_revenue" />
+              <TopProductsByMarginChart v-if="marginDataAvailable" :products="summary.top_products_by_margin" />
+              <ProductTurnoverSummary class="lg:col-span-2" :products="summary.product_turnover_summary" />
+              <HorizontalRankingChart
+                class="lg:col-span-2"
+                title="SKUs reais vendidos"
+                subtitle="Top 10 por quantidade real — kit explodido nos componentes"
+                :entries="realSkusSoldEntries"
+                :value-formatter="(v) => `${formatStockQty(v)} un.`"
+                :tooltip-formatter="realSkusSoldTooltip"
+              />
+            </div>
+          </template>
         </section>
 
         <!-- Clientes -->
@@ -296,8 +330,11 @@ function couponDetail() {
           <IdworksTab :from="from" :to="to" />
         </section>
 
-        <!-- Saúde Operacional -->
-        <section v-show="activeTab === 'health'" class="space-y-5">
+        <!-- Saúde Operacional — v-if (não v-show): fora da lista de
+             DASHBOARD_TABS hoje (não navegável), então nunca deve montar;
+             se montasse via v-show, summary.conflicts/reconciliation (tier
+             lento) ainda não existiriam no primeiro paint e quebrariam. -->
+        <section v-if="activeTab === 'health'" class="space-y-5">
           <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <ValueAtRiskCard :value-at-risk="summary.conflicts.value_at_risk" />
             <OldestConflictCard :oldest-open-days="summary.conflicts.oldest_open_days" />
