@@ -257,7 +257,7 @@ function couponDetail() {
 
         <!-- Financeiro -->
         <FinancialTab
-          v-show="activeTab === 'finance'"
+          v-if="activeTab === 'finance'"
           v-model:active-subtab="financeSubtab"
           :financial="financial"
           :coupons="coupons"
@@ -287,12 +287,12 @@ function couponDetail() {
         </section>
 
         <!-- Clientes -->
-        <section v-show="activeTab === 'customers'" class="space-y-6">
+        <section v-if="activeTab === 'customers'" class="space-y-6">
           <CustomersTab :from="from" :to="to" />
         </section>
 
         <!-- idworks -->
-        <section v-show="activeTab === 'reconciliation'" class="space-y-6">
+        <section v-if="activeTab === 'reconciliation'" class="space-y-6">
           <IdworksTab :from="from" :to="to" />
         </section>
 

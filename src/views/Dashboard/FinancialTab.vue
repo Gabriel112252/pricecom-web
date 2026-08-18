@@ -43,12 +43,12 @@ const activeSubtab = defineModel('activeSubtab', { default: FINANCE_SUBTABS[0].k
     <FinancialConsolidatedTab v-show="activeSubtab === 'consolidated'" :financial="financial" />
 
     <FinancialReceivablesTab
-      v-show="activeSubtab === 'yampi_pagarme'"
+      v-if="activeSubtab === 'yampi_pagarme'"
       :gateway-fee-avg-per-order="financial.gateway_fee_avg_per_order"
     />
 
     <FinancialTiktokTab
-      v-show="activeSubtab === 'tiktok'"
+      v-if="activeSubtab === 'tiktok'"
       :breakdown="financial.tiktok_financial_breakdown"
       :coverage="financial.tiktok_coverage"
       :daily-series="financial.tiktok_daily_series"
