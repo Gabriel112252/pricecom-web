@@ -8,6 +8,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import { CONFLICT_TYPE_LABEL, SEVERITY_LABEL } from '@/views/Audit/lib/auditLabels'
 
 const OPEN_STOCK_STATUSES = [ 'pending', 'awaiting_confirmation', 'insufficient_reserve', 'failed' ]
+const ANOMALY_TYPES = [ 'order_volume_drop', 'sku_volume_drop' ]
 
 const STOCK_STATUS_LABEL = {
   pending: 'Pendente',
@@ -20,6 +21,7 @@ const FILTERS = [
   { key: 'all', label: 'Todos' },
   { key: 'critical', label: 'Críticos' },
   { key: 'integration', label: 'Integrações' },
+  { key: 'anomaly', label: 'Anomalias' },
   { key: 'stock', label: 'Estoque' },
   { key: 'audit', label: 'Auditoria' },
 ]
@@ -43,7 +45,7 @@ async function load() {
   const [ integrationsResult, stockResult, conflictsResult ] = await Promise.allSettled([
     api.get('/integration_health'),
     api.get('/stock_alerts', { params: { status: OPEN_STOCK_STATUSES, page: 1, per_page: 100 } }),
-    api.get('/audit_conflicts', { params: { status: 'open', page: 1, per_page: 100 } }),
+    api.get('/audit_conflicts', { params: { status: 'open', operational_queue: true, page: 1, per_page: 100 } }),
   ])
 
   if (integrationsResult.status === 'fulfilled') {
@@ -64,7 +66,7 @@ async function load() {
     auditConflicts.value = conflictsResult.value.data?.audit_conflicts || []
   } else {
     auditConflicts.value = []
-    sourceErrors.value.push('Auditoria')
+    sourceErrors.value.push('Auditoria e anomalias')
   }
 
   loading.value = false
@@ -91,6 +93,22 @@ function toTime(value) {
   if (!value) return 0
   const parsed = new Date(value).getTime()
   return Number.isNaN(parsed) ? 0 : parsed
+}
+
+function anomalyDescription(conflict) {
+  const metadata = conflict.metadata || {}
+  const expected = Number(conflict.expected_value || 0)
+  const actual = Number(conflict.actual_value || 0)
+  const drop = Number(metadata.drop_pct || 0)
+  const windowMinutes = Number(metadata.window_minutes || 60)
+
+  if (conflict.conflict_type === 'order_volume_drop') {
+    const scope = metadata.channel_name || 'Todos os canais'
+    return `${scope}: ${Math.round(actual)} pedido(s) nos últimos ${windowMinutes} min · esperado ~${expected.toFixed(1)} · queda ${drop.toFixed(0)}%`
+  }
+
+  const sku = metadata.sku || conflict.product_sku || 'sem SKU'
+  return `SKU ${sku}: ${actual.toFixed(0)} un. nos últimos ${windowMinutes} min · esperado ~${expected.toFixed(1)} · queda ${drop.toFixed(0)}%`
 }
 
 const integrationIssues = computed(() =>
@@ -137,21 +155,27 @@ const queue = computed(() => {
     raw: alert,
   }))
 
-  const conflicts = auditConflicts.value.map((conflict) => ({
-    key: `audit-${conflict.id}`,
-    kind: 'audit',
-    kindLabel: 'Auditoria',
-    severity: conflict.severity || 'medium',
-    statusLabel: 'Aberto',
-    title: CONFLICT_TYPE_LABEL[conflict.conflict_type] || conflict.conflict_type,
-    description: [
-      conflict.order_number ? `Pedido ${conflict.order_number}` : null,
-      conflict.product_sku ? `SKU ${conflict.product_sku}` : null,
-    ].filter(Boolean).join(' · ') || 'Conflito sem pedido ou SKU vinculado.',
-    technicalDescription: null,
-    timestamp: conflict.created_at,
-    raw: conflict,
-  }))
+  const conflicts = auditConflicts.value.map((conflict) => {
+    const anomaly = ANOMALY_TYPES.includes(conflict.conflict_type)
+
+    return {
+      key: `${anomaly ? 'anomaly' : 'audit'}-${conflict.id}`,
+      kind: anomaly ? 'anomaly' : 'audit',
+      kindLabel: anomaly ? 'Anomalia' : 'Auditoria',
+      severity: conflict.severity || 'medium',
+      statusLabel: anomaly ? 'Detectado' : 'Aberto',
+      title: CONFLICT_TYPE_LABEL[conflict.conflict_type] || conflict.conflict_type,
+      description: anomaly
+        ? anomalyDescription(conflict)
+        : [
+            conflict.order_number ? `Pedido ${conflict.order_number}` : null,
+            conflict.product_sku ? `SKU ${conflict.product_sku}` : null,
+          ].filter(Boolean).join(' · ') || 'Conflito sem pedido ou SKU vinculado.',
+      technicalDescription: anomaly ? 'Baseline: mesmo horário das 4 semanas anteriores.' : null,
+      timestamp: anomaly ? (conflict.updated_at || conflict.created_at) : conflict.created_at,
+      raw: conflict,
+    }
+  })
 
   return [ ...integrations, ...stock, ...conflicts ].sort((a, b) => {
     const bySeverity = severityRank(b.severity) - severityRank(a.severity)
@@ -176,6 +200,7 @@ const visibleQueue = computed(() => {
 })
 
 const criticalCount = computed(() => queue.value.filter((item) => item.severity === 'critical').length)
+const anomalyCount = computed(() => queue.value.filter((item) => item.kind === 'anomaly').length)
 
 function countForFilter(key) {
   if (key === 'all') return queue.value.length
@@ -273,9 +298,9 @@ async function updateConflict(item, status) {
         <p class="mt-1 text-xs text-slate-400">com erro ou processamento pendente</p>
       </div>
       <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Estoque + auditoria</p>
-        <p class="mt-2 text-3xl font-bold text-slate-900">{{ stockAlerts.length + auditConflicts.length }}</p>
-        <p class="mt-1 text-xs text-slate-400">alertas e divergências abertas</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Anomalias</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900">{{ anomalyCount }}</p>
+        <p class="mt-1 text-xs text-slate-400">quedas de volume fora do padrão</p>
       </div>
     </div>
 
@@ -352,6 +377,12 @@ async function updateConflict(item, status) {
                 >
                   Ver integração
                 </RouterLink>
+              </template>
+
+              <template v-else-if="item.kind === 'anomaly'">
+                <span class="rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
+                  Resolve automaticamente ao normalizar
+                </span>
               </template>
 
               <template v-else-if="item.kind === 'stock'">
