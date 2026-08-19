@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Activity,
   Users,
+  Contact,
   UserCog,
   ShoppingCart,
   Package,
@@ -32,6 +33,7 @@ const auth = useAuthStore()
 const MAIN_ITEMS = [
   { label: 'Dashboard', to: { name: 'dashboard' }, icon: LayoutDashboard },
   { label: 'Operação', to: { name: 'operations' }, icon: Activity },
+  { label: 'Clientes', to: { name: 'customers' }, icon: Contact },
   { label: 'Afiliados', to: { name: 'affiliates' }, icon: Users },
   { label: 'Pedidos', to: { name: 'orders' }, icon: ShoppingCart },
   { label: 'Produtos', to: { name: 'products' }, icon: Package },
