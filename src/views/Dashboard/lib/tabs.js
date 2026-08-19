@@ -7,7 +7,7 @@ export const DASHBOARD_TABS = [
   { key: 'products', label: 'Produtos' },
   { key: 'customers', label: 'Clientes' },
   { key: 'finance', label: 'Financeiro' },
-  { key: 'reconciliation', label: 'idworks' },
+  { key: 'reconciliation', label: 'IDWorks' },
   // 'health' (Saúde Operacional) escondida por enquanto — não é definitivo,
   // só descomentar a linha abaixo pra trazer de volta. Componente, rota e
   // lógica de backend continuam intactos, só saiu da lista de tabs.
