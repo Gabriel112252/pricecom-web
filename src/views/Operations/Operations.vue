@@ -37,6 +37,7 @@ const sourceErrors = ref([])
 const workingKey = ref(null)
 const activeFilter = ref('all')
 const searchTerm = ref('')
+const testingWhatsapp = ref(false)
 
 async function load() {
   loading.value = true
@@ -264,12 +265,33 @@ async function updateConflict(item, status) {
     workingKey.value = null
   }
 }
+
+async function testWhatsappAlert() {
+  testingWhatsapp.value = true
+  try {
+    await api.post('/operational_notifications/whatsapp_test')
+    toast.success('Teste de WhatsApp enfileirado. A mensagem deve chegar em instantes.')
+  } catch (e) {
+    toast.error(e.response?.data?.error || 'Não foi possível disparar o teste de WhatsApp.')
+  } finally {
+    testingWhatsapp.value = false
+  }
+}
 </script>
 
 <template>
   <div class="space-y-6 p-6 lg:p-8">
     <PageHeader title="Operação" subtitle="O que precisa de atenção agora, sem misturar histórico resolvido com a fila atual.">
       <template #actions>
+        <button
+          v-if="auth.isAdmin"
+          type="button"
+          :disabled="testingWhatsapp"
+          class="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+          @click="testWhatsappAlert"
+        >
+          {{ testingWhatsapp ? 'Enviando teste...' : 'Testar WhatsApp' }}
+        </button>
         <button
           type="button"
           :disabled="loading"
