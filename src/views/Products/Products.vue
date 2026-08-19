@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import api from '@/lib/api'
 import { formatMoney } from '@/lib/format'
 import PageHeader from '@/components/PageHeader.vue'
@@ -9,12 +10,15 @@ const CHANNEL_LABELS = {
   yampi: 'Yampi',
   shopify: 'Shopify',
   tiktok: 'TikTok Shop',
+  nuvemshop: 'Nuvemshop',
+  idworks: 'IDWorks',
   mercadolivre: 'Mercado Livre',
   shopee: 'Shopee',
 }
 
 const router = useRouter()
 const route = useRoute()
+const auth = useAuthStore()
 const products = ref([])
 const loading = ref(true)
 const search = ref('')
@@ -61,7 +65,18 @@ function onChannelChange() {
 
 <template>
   <div class="space-y-6 p-6 lg:p-8">
-    <PageHeader title="Produtos" subtitle="Cadastro de produtos, kits e giro real por SKU." />
+    <PageHeader title="Produtos" subtitle="Cadastro de produtos, kits e giro real por SKU.">
+      <template #actions>
+        <button
+          v-if="auth.isAdmin"
+          type="button"
+          class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+          @click="router.push({ name: 'product-registration-new' })"
+        >
+          + Cadastrar produto / variação
+        </button>
+      </template>
+    </PageHeader>
 
     <div class="flex flex-wrap items-center gap-2">
       <input
