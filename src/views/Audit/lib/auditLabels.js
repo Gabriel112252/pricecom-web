@@ -9,6 +9,7 @@ export const CONFLICT_TYPE_LABEL = {
   fee_rate_mismatch: 'Taxa cobrada divergente',
   order_volume_drop: 'Queda anormal de pedidos',
   sku_volume_drop: 'Queda anormal de vendas do SKU',
+  yampi_order_not_integrated: 'Pedido Yampi não integrado na IDWorks',
 }
 
 // Plain-language explanation of what triggered each conflict type — shown
@@ -35,6 +36,8 @@ export const CONFLICT_TYPE_DESCRIPTION = {
     'O volume de pedidos da última hora ficou muito abaixo do comportamento normal observado no mesmo horário das semanas anteriores.',
   sku_volume_drop:
     'A quantidade vendida deste SKU na última hora ficou muito abaixo do comportamento normal observado no mesmo horário das semanas anteriores.',
+  yampi_order_not_integrated:
+    'O pedido foi pago na Yampi há mais de duas horas, mas o integrador ainda não possui um pedido/mapeamento correspondente na IDWorks.',
 }
 
 // Least-severe first: matches the order severity chips/bars should render in.
