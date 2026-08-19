@@ -7,6 +7,8 @@ export const CONFLICT_TYPE_LABEL = {
   settlement_amount_mismatch: 'Divergência no repasse',
   missing_settlement: 'Repasse não encontrado',
   fee_rate_mismatch: 'Taxa cobrada divergente',
+  order_volume_drop: 'Queda anormal de pedidos',
+  sku_volume_drop: 'Queda anormal de vendas do SKU',
 }
 
 // Plain-language explanation of what triggered each conflict type — shown
@@ -29,6 +31,10 @@ export const CONFLICT_TYPE_DESCRIPTION = {
     'Este pedido já deveria ter sido repassado pelo canal de vendas, mas nenhum lançamento de repasse foi encontrado até agora.',
   fee_rate_mismatch:
     'A taxa que a Pagar.me cobrou nesta transação é diferente da taxa negociada cadastrada em Configurações. Pode indicar renegociação não atualizada no cadastro ou cobrança incorreta da adquirente.',
+  order_volume_drop:
+    'O volume de pedidos da última hora ficou muito abaixo do comportamento normal observado no mesmo horário das semanas anteriores.',
+  sku_volume_drop:
+    'A quantidade vendida deste SKU na última hora ficou muito abaixo do comportamento normal observado no mesmo horário das semanas anteriores.',
 }
 
 // Least-severe first: matches the order severity chips/bars should render in.
