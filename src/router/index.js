@@ -39,6 +39,12 @@ const routes = [
         meta: { title: 'Operação' },
       },
       {
+        path: 'clientes',
+        name: 'customers',
+        component: () => import('@/views/Customers/Customers.vue'),
+        meta: { title: 'Clientes' },
+      },
+      {
         path: 'afiliados',
         name: 'affiliates',
         component: () => import('@/views/Affiliates/Affiliates.vue'),
