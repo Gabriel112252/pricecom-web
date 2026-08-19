@@ -9,6 +9,7 @@ import { CONFLICT_TYPE_LABEL, SEVERITY_LABEL } from '@/views/Audit/lib/auditLabe
 
 const OPEN_STOCK_STATUSES = [ 'pending', 'awaiting_confirmation', 'insufficient_reserve', 'failed' ]
 const ANOMALY_TYPES = [ 'order_volume_drop', 'sku_volume_drop' ]
+const YAMPI_IDWORKS_OPERATION_TYPE = 'yampi_order_not_integrated'
 
 const STOCK_STATUS_LABEL = {
   pending: 'Pendente',
@@ -112,6 +113,15 @@ function anomalyDescription(conflict) {
   return `SKU ${sku}: ${actual.toFixed(0)} un. nos últimos ${windowMinutes} min · esperado ~${expected.toFixed(1)} · queda ${drop.toFixed(0)}%`
 }
 
+function unintegratedOrderDescription(conflict) {
+  const metadata = conflict.metadata || {}
+  const order = metadata.yampi_number || metadata.yampi_id || 'sem identificação'
+  const hours = Number(metadata.hours_waiting || 0)
+  const waiting = hours > 0 ? `${hours.toFixed(hours % 1 === 0 ? 0 : 1)}h` : 'mais de 2h'
+
+  return `Pedido Yampi ${order} pago há ${waiting} ainda não possui pedido/mapeamento na IDWorks.`
+}
+
 const integrationIssues = computed(() =>
   integrationHealth.value.filter((item) => [ 'error', 'pending' ].includes(item.health_status))
 )
@@ -158,22 +168,31 @@ const queue = computed(() => {
 
   const conflicts = auditConflicts.value.map((conflict) => {
     const anomaly = ANOMALY_TYPES.includes(conflict.conflict_type)
+    const unintegrated = conflict.conflict_type === YAMPI_IDWORKS_OPERATION_TYPE
+    const metadata = conflict.metadata || {}
+    const kind = unintegrated ? 'integration' : (anomaly ? 'anomaly' : 'audit')
 
     return {
-      key: `${anomaly ? 'anomaly' : 'audit'}-${conflict.id}`,
-      kind: anomaly ? 'anomaly' : 'audit',
-      kindLabel: anomaly ? 'Anomalia' : 'Auditoria',
+      key: `${kind}-${conflict.id}`,
+      kind,
+      kindLabel: unintegrated ? 'Integração' : (anomaly ? 'Anomalia' : 'Auditoria'),
       severity: conflict.severity || 'medium',
-      statusLabel: anomaly ? 'Detectado' : 'Aberto',
+      statusLabel: unintegrated ? 'Não integrado' : (anomaly ? 'Detectado' : 'Aberto'),
       title: CONFLICT_TYPE_LABEL[conflict.conflict_type] || conflict.conflict_type,
-      description: anomaly
-        ? anomalyDescription(conflict)
-        : [
-            conflict.order_number ? `Pedido ${conflict.order_number}` : null,
-            conflict.product_sku ? `SKU ${conflict.product_sku}` : null,
-          ].filter(Boolean).join(' · ') || 'Conflito sem pedido ou SKU vinculado.',
-      technicalDescription: anomaly ? 'Baseline: mesmo horário das 4 semanas anteriores.' : null,
-      timestamp: anomaly ? (conflict.updated_at || conflict.created_at) : conflict.created_at,
+      description: unintegrated
+        ? unintegratedOrderDescription(conflict)
+        : anomaly
+          ? anomalyDescription(conflict)
+          : [
+              conflict.order_number ? `Pedido ${conflict.order_number}` : null,
+              conflict.product_sku ? `SKU ${conflict.product_sku}` : null,
+            ].filter(Boolean).join(' · ') || 'Conflito sem pedido ou SKU vinculado.',
+      technicalDescription: unintegrated
+        ? (metadata.last_error ? `Último erro: ${metadata.last_error}` : 'O integrador revalida automaticamente e remove esta pendência assim que o mapping IDWorks existir.')
+        : anomaly ? 'Baseline: mesmo horário das 4 semanas anteriores.' : null,
+      timestamp: unintegrated
+        ? (metadata.paid_at || conflict.updated_at || conflict.created_at)
+        : anomaly ? (conflict.updated_at || conflict.created_at) : conflict.created_at,
       raw: conflict,
     }
   })
@@ -201,6 +220,7 @@ const visibleQueue = computed(() => {
 })
 
 const criticalCount = computed(() => queue.value.filter((item) => item.severity === 'critical').length)
+const integrationCount = computed(() => queue.value.filter((item) => item.kind === 'integration').length)
 const anomalyCount = computed(() => queue.value.filter((item) => item.kind === 'anomaly').length)
 
 function countForFilter(key) {
@@ -245,6 +265,30 @@ async function dismissStock(item) {
     await load()
   } catch (e) {
     toast.error(e.response?.data?.error || 'Não foi possível dispensar o alerta.')
+  } finally {
+    workingKey.value = null
+  }
+}
+
+async function reprocessUnintegratedOrder(item) {
+  const metadata = item.raw.metadata || {}
+  const order = metadata.yampi_number || metadata.yampi_id || item.raw.id
+  if (!window.confirm(`Reprocessar o pedido Yampi ${order} para a IDWorks?`)) return
+
+  workingKey.value = item.key
+  try {
+    const response = await api.post(`/audit_conflicts/${item.raw.id}/reprocess`)
+    const status = response.data?.status
+
+    if (status === 'already_resolved') {
+      toast.success('O pedido já estava integrado. A pendência foi resolvida.')
+    } else {
+      toast.success('Pedido reenfileirado no integrador.')
+    }
+
+    await load()
+  } catch (e) {
+    toast.error(e.response?.data?.error || 'Não foi possível reprocessar o pedido.')
   } finally {
     workingKey.value = null
   }
@@ -316,7 +360,7 @@ async function testWhatsappAlert() {
       </div>
       <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Integrações</p>
-        <p class="mt-2 text-3xl font-bold text-slate-900">{{ integrationIssues.length }}</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900">{{ integrationCount }}</p>
         <p class="mt-1 text-xs text-slate-400">com erro ou processamento pendente</p>
       </div>
       <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -392,6 +436,15 @@ async function testWhatsappAlert() {
 
             <div class="flex shrink-0 flex-wrap items-center gap-2">
               <template v-if="item.kind === 'integration'">
+                <button
+                  v-if="auth.isAdmin && item.raw.conflict_type === YAMPI_IDWORKS_OPERATION_TYPE"
+                  type="button"
+                  :disabled="workingKey === item.key"
+                  class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  @click="reprocessUnintegratedOrder(item)"
+                >
+                  {{ workingKey === item.key ? 'Reprocessando...' : 'Reprocessar' }}
+                </button>
                 <RouterLink
                   v-if="auth.isAdmin"
                   :to="{ name: 'integrations' }"
