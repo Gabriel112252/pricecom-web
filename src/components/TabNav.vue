@@ -9,13 +9,13 @@ defineEmits(['update:modelValue'])
 </script>
 
 <template>
-  <div class="relative isolate overflow-hidden border-b border-slate-200">
-    <nav class="flex gap-1">
+  <div class="relative isolate overflow-x-auto border-b border-slate-200">
+    <nav class="flex min-w-max gap-1">
       <button
         v-for="tab in tabs"
         :key="tab.key"
         type="button"
-        class="border-b-2 px-4 py-2.5 text-sm font-medium transition"
+        class="shrink-0 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition"
         :class="
           modelValue === tab.key
             ? 'border-indigo-500 text-indigo-700'
