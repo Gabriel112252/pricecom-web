@@ -5,6 +5,8 @@ import { formatCompactMoney, formatMoney, formatMoneyOrDash, formatPct } from '@
 
 const props = defineProps({
   channels: { type: Array, default: () => [] },
+  title: { type: String, default: 'Vendas por canal' },
+  subtitle: { type: String, default: 'Receita efetiva por origem' },
 })
 
 const entries = computed(() =>
@@ -62,8 +64,8 @@ const option = computed(() => ({
 
 <template>
   <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-    <h3 class="text-sm font-semibold text-slate-900">Vendas por canal</h3>
-    <p class="mt-0.5 text-xs text-slate-400">Receita efetiva por origem</p>
+    <h3 class="text-sm font-semibold text-slate-900">{{ props.title }}</h3>
+    <p class="mt-0.5 text-xs text-slate-400">{{ props.subtitle }}</p>
     <div v-if="entries.length === 0" class="chart-frame flex items-center justify-center text-sm text-slate-400">
       Sem dados no período.
     </div>

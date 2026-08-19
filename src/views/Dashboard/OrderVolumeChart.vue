@@ -6,6 +6,8 @@ import { formatBucketLabel } from '@/lib/format'
 const props = defineProps({
   byChannelSeries: { type: Array, default: () => [] },
   granularity: { type: String, default: 'day' },
+  title: { type: String, default: 'Volume de pedidos' },
+  subtitle: { type: String, default: 'Pedidos por canal ao longo do tempo' },
 })
 
 const buckets = computed(() => [...new Set(props.byChannelSeries.map((row) => row.date))].sort())
@@ -61,8 +63,8 @@ const option = computed(() => ({
 
 <template>
   <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-    <h3 class="text-sm font-semibold text-slate-900">Volume de pedidos</h3>
-    <p class="mt-0.5 text-xs text-slate-400">Pedidos por canal ao longo do tempo</p>
+    <h3 class="text-sm font-semibold text-slate-900">{{ props.title }}</h3>
+    <p class="mt-0.5 text-xs text-slate-400">{{ props.subtitle }}</p>
     <div v-if="buckets.length === 0" class="chart-frame flex items-center justify-center text-sm text-slate-400">
       Sem dados no período.
     </div>

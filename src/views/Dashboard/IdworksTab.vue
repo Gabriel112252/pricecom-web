@@ -38,7 +38,6 @@ async function load() {
 watch(() => [props.from, props.to, loja.value], load)
 onMounted(load)
 
-const revenueByLoja = computed(() => data.value?.revenue_by_loja || {})
 const topProductsEntries = computed(() =>
   (data.value?.top_products || []).map((p) => ({ label: p.sku, name: p.name, value: p.quantity }))
 )
@@ -64,22 +63,43 @@ const realSkusSold = computed(() => data.value?.real_skus_sold || [])
 
     <template v-else-if="data">
       <div class="space-y-6 transition-opacity" :class="{ 'opacity-60': loading }">
-        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
-          <KpiCard label="Faturamento" :value="formatMoney(data.revenue_total)" />
-          <KpiCard label="Pedidos" :value="String(data.orders_count ?? 0)" />
-          <KpiCard label="Ticket médio" :value="formatMoneyOrDash(data.average_ticket)" />
-          <KpiCard label="Faturamento Hidrabene" :value="formatMoney(revenueByLoja.hidrabene)" />
-          <KpiCard label="Faturamento Anasol" :value="formatMoney(revenueByLoja.anasol)" />
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-6">
+          <KpiCard label="Pricecom · faturamento" :value="formatMoney(data.revenue_total)" />
+          <KpiCard label="IDWorks · faturamento" :value="formatMoney(data.idworks_revenue_total)" />
+          <KpiCard label="Pricecom · pedidos" :value="String(data.orders_count ?? 0)" />
+          <KpiCard label="IDWorks · pedidos" :value="String(data.idworks_orders_count ?? 0)" />
+          <KpiCard label="Pricecom · ticket" :value="formatMoneyOrDash(data.average_ticket)" />
+          <KpiCard label="IDWorks · ticket" :value="formatMoneyOrDash(data.idworks_average_ticket)" />
         </div>
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <OrderVolumeChart :by-channel-series="data.orders_timeseries" granularity="day" />
-          <SalesByChannelChart :channels="data.channel_breakdown" />
+          <OrderVolumeChart
+            title="Pedidos no Pricecom"
+            subtitle="Volume importado no Pricecom por canal"
+            :by-channel-series="data.orders_timeseries"
+            granularity="day"
+          />
+          <OrderVolumeChart
+            title="Pedidos no IDWorks"
+            subtitle="Volume direto do ERP por canal"
+            :by-channel-series="data.idworks_orders_timeseries"
+            granularity="day"
+          />
+          <SalesByChannelChart
+            title="Canais no Pricecom"
+            subtitle="Receita dos pedidos importados"
+            :channels="data.channel_breakdown"
+          />
+          <SalesByChannelChart
+            title="Canais no IDWorks"
+            subtitle="Receita direta do ERP"
+            :channels="data.idworks_channel_breakdown"
+          />
         </div>
 
         <HorizontalRankingChart
           title="Produtos mais vendidos"
-          :subtitle="loja ? `Top 10 por SKU do pedido — ${loja === 'hidrabene' ? 'Hidrabene' : 'Anasol'}` : 'Top 10 por SKU do pedido — todas as lojas'"
+          :subtitle="loja ? `Top 10 por SKU do pedido no Pricecom — ${loja === 'hidrabene' ? 'Hidrabene' : 'Anasol'}` : 'Top 10 por SKU do pedido no Pricecom — todas as lojas'"
           :entries="topProductsEntries"
           :value-formatter="(v) => `${formatStockQty(v)} un.`"
         />
