@@ -107,11 +107,11 @@ const queue = computed(() => {
     title: health.name || health.channel_name || health.provider || `Integração #${health.id}`,
     description:
       health.health_status === 'error'
-        ? 'A integração apresentou falha depois da última execução bem-sucedida.'
+        ? 'A integração apresentou uma falha que ainda está afetando o estado atual.'
         : `${health.events_pending_count || 0} evento(s) aguardando processamento.`,
     technicalDescription:
       health.health_status === 'error'
-        ? `${health.logs_error_last_24h || 0} falha(s) de sync nas últimas 24h · ${health.events_error_count || 0} evento(s) com erro`
+        ? `${health.logs_error_last_24h || 0} falha(s) de sync nas últimas 24h · ${health.events_error_count || 0} evento(s) com erro no histórico`
         : null,
     timestamp: health.last_event_error_at || health.last_error_at || health.last_event_at || health.last_synced_at,
     raw: health,
@@ -320,94 +320,95 @@ async function updateConflict(item, status) {
         Nenhuma pendência encontrada neste filtro.
       </div>
 
-      <article
-        v-for="item in visibleQueue"
-        v-else
-        :key="item.key"
-        class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
-      >
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{ item.kindLabel }}</span>
-              <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="severityClass(item.severity)">
-                {{ SEVERITY_LABEL[item.severity] || item.severity }}
-              </span>
-              <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                {{ item.statusLabel }}
-              </span>
+      <template v-else>
+        <article
+          v-for="item in visibleQueue"
+          :key="item.key"
+          class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+        >
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{ item.kindLabel }}</span>
+                <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="severityClass(item.severity)">
+                  {{ SEVERITY_LABEL[item.severity] || item.severity }}
+                </span>
+                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                  {{ item.statusLabel }}
+                </span>
+              </div>
+              <h3 class="mt-2 break-words text-sm font-semibold text-slate-900 sm:text-base">{{ item.title }}</h3>
+              <p class="mt-1 break-words text-sm text-slate-600">{{ item.description }}</p>
+              <p v-if="item.technicalDescription" class="mt-1 break-words text-xs text-slate-400">{{ item.technicalDescription }}</p>
+              <p v-if="item.timestamp" class="mt-2 text-xs text-slate-400">{{ formatDateTime(item.timestamp) }}</p>
             </div>
-            <h3 class="mt-2 break-words text-sm font-semibold text-slate-900 sm:text-base">{{ item.title }}</h3>
-            <p class="mt-1 break-words text-sm text-slate-600">{{ item.description }}</p>
-            <p v-if="item.technicalDescription" class="mt-1 break-words text-xs text-slate-400">{{ item.technicalDescription }}</p>
-            <p v-if="item.timestamp" class="mt-2 text-xs text-slate-400">{{ formatDateTime(item.timestamp) }}</p>
+
+            <div class="flex shrink-0 flex-wrap items-center gap-2">
+              <template v-if="item.kind === 'integration'">
+                <RouterLink
+                  v-if="auth.isAdmin"
+                  :to="{ name: 'integrations' }"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Ver integração
+                </RouterLink>
+              </template>
+
+              <template v-else-if="item.kind === 'stock'">
+                <button
+                  v-if="auth.isAdmin && item.raw.status === 'awaiting_confirmation'"
+                  type="button"
+                  :disabled="workingKey === item.key"
+                  class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  @click="confirmStock(item)"
+                >
+                  Confirmar reposição
+                </button>
+                <button
+                  v-if="auth.isAdmin && canDismissStock(item.raw)"
+                  type="button"
+                  :disabled="workingKey === item.key"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  @click="dismissStock(item)"
+                >
+                  Dispensar
+                </button>
+                <RouterLink
+                  :to="{ name: 'inventory' }"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Ver estoque
+                </RouterLink>
+              </template>
+
+              <template v-else>
+                <button
+                  type="button"
+                  :disabled="workingKey === item.key"
+                  class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  @click="updateConflict(item, 'resolved')"
+                >
+                  Resolver
+                </button>
+                <button
+                  type="button"
+                  :disabled="workingKey === item.key"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  @click="updateConflict(item, 'ignored')"
+                >
+                  Ignorar
+                </button>
+                <RouterLink
+                  :to="{ name: 'audit', query: { severity: item.raw.severity } }"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Ver auditoria
+                </RouterLink>
+              </template>
+            </div>
           </div>
-
-          <div class="flex shrink-0 flex-wrap items-center gap-2">
-            <template v-if="item.kind === 'integration'">
-              <RouterLink
-                v-if="auth.isAdmin"
-                :to="{ name: 'integrations' }"
-                class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-              >
-                Ver integração
-              </RouterLink>
-            </template>
-
-            <template v-else-if="item.kind === 'stock'">
-              <button
-                v-if="auth.isAdmin && item.raw.status === 'awaiting_confirmation'"
-                type="button"
-                :disabled="workingKey === item.key"
-                class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-                @click="confirmStock(item)"
-              >
-                Confirmar reposição
-              </button>
-              <button
-                v-if="auth.isAdmin && canDismissStock(item.raw)"
-                type="button"
-                :disabled="workingKey === item.key"
-                class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                @click="dismissStock(item)"
-              >
-                Dispensar
-              </button>
-              <RouterLink
-                :to="{ name: 'inventory' }"
-                class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-              >
-                Ver estoque
-              </RouterLink>
-            </template>
-
-            <template v-else>
-              <button
-                type="button"
-                :disabled="workingKey === item.key"
-                class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-                @click="updateConflict(item, 'resolved')"
-              >
-                Resolver
-              </button>
-              <button
-                type="button"
-                :disabled="workingKey === item.key"
-                class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                @click="updateConflict(item, 'ignored')"
-              >
-                Ignorar
-              </button>
-              <RouterLink
-                :to="{ name: 'audit', query: { severity: item.raw.severity } }"
-                class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-              >
-                Ver auditoria
-              </RouterLink>
-            </template>
-          </div>
-        </div>
-      </article>
+        </article>
+      </template>
     </section>
   </div>
 </template>
