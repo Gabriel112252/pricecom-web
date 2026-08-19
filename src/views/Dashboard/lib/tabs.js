@@ -5,9 +5,11 @@ export const DASHBOARD_TABS = [
   { key: 'sales', label: 'Vendas' },
   { key: 'discounts', label: 'Descontos & Cupons' },
   { key: 'products', label: 'Produtos' },
-  { key: 'customers', label: 'Clientes' },
   { key: 'finance', label: 'Financeiro' },
   { key: 'reconciliation', label: 'IDWorks' },
+  // Clientes virou módulo próprio na sidebar: a base filtrável, RFM e
+  // recompra precisam de espaço e contexto próprios, em vez de mais uma
+  // subaba analítica do Dashboard.
   // 'health' (Saúde Operacional) escondida por enquanto — não é definitivo,
   // só descomentar a linha abaixo pra trazer de volta. Componente, rota e
   // lógica de backend continuam intactos, só saiu da lista de tabs.
