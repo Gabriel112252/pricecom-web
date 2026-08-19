@@ -13,9 +13,9 @@ function deltaLabel(pct) {
 </script>
 
 <template>
-  <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+  <div class="min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
     <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ label }}</p>
-    <p class="mt-2 text-3xl font-bold text-slate-900">{{ value }}</p>
+    <p class="mt-2 break-words text-2xl font-bold leading-tight text-slate-900">{{ value }}</p>
     <p
       class="mt-1 text-xs"
       :class="deltaPct === null || deltaPct === undefined ? 'text-slate-400' : deltaPct >= 0 ? 'text-emerald-600' : 'text-red-600'"
