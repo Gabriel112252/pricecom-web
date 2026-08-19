@@ -57,6 +57,12 @@ const routes = [
         meta: { title: 'Produtos' },
       },
       {
+        path: 'produtos/cadastrar',
+        name: 'product-registration-new',
+        component: () => import('@/views/Products/ProductRegistrationNew.vue'),
+        meta: { title: 'Cadastrar produto', requiresAdmin: true },
+      },
+      {
         path: 'produtos/:id',
         name: 'product-edit',
         component: () => import('@/views/Products/ProductEdit.vue'),
