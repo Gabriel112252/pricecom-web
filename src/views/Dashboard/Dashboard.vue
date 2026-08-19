@@ -22,7 +22,6 @@ import CartAbandonmentCard from './CartAbandonmentCard.vue'
 import CartAbandonmentDiscountBreakdown from './CartAbandonmentDiscountBreakdown.vue'
 import TiktokContentFormatCard from './TiktokContentFormatCard.vue'
 import YampiUtmBreakdownCard from './YampiUtmBreakdownCard.vue'
-import StockAlertsCard from './StockAlertsCard.vue'
 import FreightMarginCard from './FreightMarginCard.vue'
 import FinancialCompositionBlock from './FinancialCompositionBlock.vue'
 import DataQualityBlock from './DataQualityBlock.vue'
@@ -182,7 +181,7 @@ function couponDetail() {
 
 <template>
   <div class="space-y-6 p-6 lg:p-8">
-    <PageHeader title="Dashboard" subtitle="Visão geral operacional do hub Pricecom.">
+    <PageHeader title="Dashboard" subtitle="Visão geral de vendas e desempenho do negócio.">
       <!-- Escondido só na subtab Yampi·Pagar.me: ela tem seu próprio
            filtro local (gateway + data de pagamento) com escopo diferente
            do filtro global. As subtabs Consolidado e TikTok Shop usam o
@@ -229,14 +228,6 @@ function couponDetail() {
               :detail="couponDetail()"
               tooltip="Somente valor bancado pelo vendedor: cupons identificados, descontos comerciais sem código, subsídio de frete estimado e desconto do vendedor TikTok. Subsídio pago pela TikTok aparece em 'Incentivos da plataforma', nunca somado aqui."
             />
-          </div>
-
-          <!-- Card isolado, mesma grade de largura da linha de KPIs acima
-               (só 1 dos 4 slots ocupado) — operacional, não financeiro,
-               então fica numa linha própria em vez de disputar espaço com
-               os KPIs de receita. -->
-          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <StockAlertsCard />
           </div>
 
           <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
