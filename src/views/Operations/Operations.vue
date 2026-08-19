@@ -110,7 +110,16 @@ function anomalyDescription(conflict) {
   }
 
   const sku = metadata.sku || conflict.product_sku || 'sem SKU'
-  return `SKU ${sku}: ${actual.toFixed(0)} un. nos últimos ${windowMinutes} min · esperado ~${expected.toFixed(1)} · queda ${drop.toFixed(0)}%`
+  const channelBreakdown = Array.isArray(metadata.channel_breakdown) ? metadata.channel_breakdown : []
+  const affectedChannels = channelBreakdown
+    .filter((row) => row?.affected)
+    .map((row) => row.channel_name)
+    .filter(Boolean)
+  const channelLabel = affectedChannels.length
+    ? ` · ${affectedChannels.length === 1 ? 'Canal' : 'Canais'}: ${affectedChannels.join(', ')}`
+    : ''
+
+  return `SKU ${sku}: ${actual.toFixed(0)} un. nos últimos ${windowMinutes} min · esperado ~${expected.toFixed(1)} · queda ${drop.toFixed(0)}%${channelLabel}`
 }
 
 function unintegratedOrderDescription(conflict) {
