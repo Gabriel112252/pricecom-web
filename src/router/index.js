@@ -33,6 +33,12 @@ const routes = [
         meta: { title: 'Dashboard' },
       },
       {
+        path: 'operacao',
+        name: 'operations',
+        component: () => import('@/views/Operations/Operations.vue'),
+        meta: { title: 'Operação' },
+      },
+      {
         path: 'afiliados',
         name: 'affiliates',
         component: () => import('@/views/Affiliates/Affiliates.vue'),
