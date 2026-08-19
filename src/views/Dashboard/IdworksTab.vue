@@ -63,7 +63,7 @@ const realSkusSold = computed(() => data.value?.real_skus_sold || [])
 
     <template v-else-if="data">
       <div class="space-y-6 transition-opacity" :class="{ 'opacity-60': loading }">
-        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-6">
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
           <KpiCard label="Pricecom · faturamento" :value="formatMoney(data.revenue_total)" />
           <KpiCard label="IDWorks · faturamento" :value="formatMoney(data.idworks_revenue_total)" />
           <KpiCard label="Pricecom · pedidos" :value="String(data.orders_count ?? 0)" />
