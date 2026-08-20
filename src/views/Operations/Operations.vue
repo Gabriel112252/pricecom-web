@@ -10,6 +10,16 @@ import { CONFLICT_TYPE_LABEL, SEVERITY_LABEL } from '@/views/Audit/lib/auditLabe
 const OPEN_STOCK_STATUSES = [ 'pending', 'awaiting_confirmation', 'insufficient_reserve', 'failed' ]
 const ANOMALY_TYPES = [ 'order_volume_drop', 'sku_volume_drop' ]
 const YAMPI_IDWORKS_OPERATION_TYPE = 'yampi_order_not_integrated'
+const YAMPI_TRACKING_OPERATION_TYPE = 'yampi_tracking_not_synced'
+
+const TRACKING_ISSUE_LABEL = {
+  idworks_tracking_code_missing: 'Sem código na IDWorks',
+  idworks_tracking_url_missing: 'Sem URL na IDWorks',
+  idworks_order_not_found: 'Pedido não encontrado na IDWorks',
+  yampi_tracking_sync_not_confirmed: 'Falha ao sincronizar na Yampi',
+  yampi_order_not_found: 'Pedido não encontrado na Yampi',
+  tracking_reconciliation_error: 'Erro na validação do rastreio',
+}
 
 const STOCK_STATUS_LABEL = {
   pending: 'Pendente',
@@ -22,6 +32,7 @@ const FILTERS = [
   { key: 'all', label: 'Todos' },
   { key: 'critical', label: 'Críticos' },
   { key: 'integration', label: 'Integrações' },
+  { key: 'tracking', label: 'Rastreio' },
   { key: 'anomaly', label: 'Anomalias' },
   { key: 'stock', label: 'Estoque' },
   { key: 'audit', label: 'Auditoria' },
@@ -131,6 +142,27 @@ function unintegratedOrderDescription(conflict) {
   return `Pedido Yampi ${order} pago há ${waiting} ainda não possui pedido/mapeamento na IDWorks.`
 }
 
+function trackingDescription(conflict) {
+  const metadata = conflict.metadata || {}
+  const order = metadata.yampi_number || metadata.yampi_id || 'sem identificação'
+  const issue = TRACKING_ISSUE_LABEL[metadata.issue_code] || 'Rastreio não confirmado'
+
+  return `Pedido Yampi ${order} está Em transporte sem rastreio confirmado · ${issue}.`
+}
+
+function trackingTechnicalDescription(conflict) {
+  const metadata = conflict.metadata || {}
+  const parts = [
+    metadata.idworks_id ? `IDWorks ${metadata.idworks_id}` : null,
+    `IDWorks: ${metadata.idworks_tracking_code || 'sem ShippingId'}`,
+    `Yampi: ${metadata.yampi_tracking_code || 'sem track_code'}`,
+    metadata.issue_message || null,
+    metadata.last_error ? `Último erro: ${metadata.last_error}` : null,
+  ].filter(Boolean)
+
+  return parts.join(' · ')
+}
+
 const integrationIssues = computed(() =>
   integrationHealth.value.filter((item) => [ 'error', 'pending' ].includes(item.health_status))
 )
@@ -178,30 +210,39 @@ const queue = computed(() => {
   const conflicts = auditConflicts.value.map((conflict) => {
     const anomaly = ANOMALY_TYPES.includes(conflict.conflict_type)
     const unintegrated = conflict.conflict_type === YAMPI_IDWORKS_OPERATION_TYPE
+    const tracking = conflict.conflict_type === YAMPI_TRACKING_OPERATION_TYPE
     const metadata = conflict.metadata || {}
-    const kind = unintegrated ? 'integration' : (anomaly ? 'anomaly' : 'audit')
+    const kind = tracking ? 'tracking' : (unintegrated ? 'integration' : (anomaly ? 'anomaly' : 'audit'))
 
     return {
       key: `${kind}-${conflict.id}`,
       kind,
-      kindLabel: unintegrated ? 'Integração' : (anomaly ? 'Anomalia' : 'Auditoria'),
+      kindLabel: tracking ? 'Rastreio' : (unintegrated ? 'Integração' : (anomaly ? 'Anomalia' : 'Auditoria')),
       severity: conflict.severity || 'medium',
-      statusLabel: unintegrated ? 'Não integrado' : (anomaly ? 'Detectado' : 'Aberto'),
+      statusLabel: tracking
+        ? (TRACKING_ISSUE_LABEL[metadata.issue_code] || 'Sem rastreio')
+        : unintegrated ? 'Não integrado' : (anomaly ? 'Detectado' : 'Aberto'),
       title: CONFLICT_TYPE_LABEL[conflict.conflict_type] || conflict.conflict_type,
-      description: unintegrated
-        ? unintegratedOrderDescription(conflict)
-        : anomaly
-          ? anomalyDescription(conflict)
-          : [
-              conflict.order_number ? `Pedido ${conflict.order_number}` : null,
-              conflict.product_sku ? `SKU ${conflict.product_sku}` : null,
-            ].filter(Boolean).join(' · ') || 'Conflito sem pedido ou SKU vinculado.',
-      technicalDescription: unintegrated
-        ? (metadata.last_error ? `Último erro: ${metadata.last_error}` : 'O integrador revalida automaticamente e remove esta pendência assim que o mapping IDWorks existir.')
-        : anomaly ? 'Baseline: mesmo horário das 4 semanas anteriores.' : null,
-      timestamp: unintegrated
-        ? (metadata.paid_at || conflict.updated_at || conflict.created_at)
-        : anomaly ? (conflict.updated_at || conflict.created_at) : conflict.created_at,
+      description: tracking
+        ? trackingDescription(conflict)
+        : unintegrated
+          ? unintegratedOrderDescription(conflict)
+          : anomaly
+            ? anomalyDescription(conflict)
+            : [
+                conflict.order_number ? `Pedido ${conflict.order_number}` : null,
+                conflict.product_sku ? `SKU ${conflict.product_sku}` : null,
+              ].filter(Boolean).join(' · ') || 'Conflito sem pedido ou SKU vinculado.',
+      technicalDescription: tracking
+        ? trackingTechnicalDescription(conflict)
+        : unintegrated
+          ? (metadata.last_error ? `Último erro: ${metadata.last_error}` : 'O integrador revalida automaticamente e remove esta pendência assim que o mapping IDWorks existir.')
+          : anomaly ? 'Baseline: mesmo horário das 4 semanas anteriores.' : null,
+      timestamp: tracking
+        ? (metadata.detected_at || metadata.last_checked_at || conflict.updated_at || conflict.created_at)
+        : unintegrated
+          ? (metadata.paid_at || conflict.updated_at || conflict.created_at)
+          : anomaly ? (conflict.updated_at || conflict.created_at) : conflict.created_at,
       raw: conflict,
     }
   })
@@ -454,6 +495,19 @@ async function testWhatsappAlert() {
                 >
                   {{ workingKey === item.key ? 'Reprocessando...' : 'Reprocessar' }}
                 </button>
+                <RouterLink
+                  v-if="auth.isAdmin"
+                  :to="{ name: 'integrations' }"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Ver integração
+                </RouterLink>
+              </template>
+
+              <template v-else-if="item.kind === 'tracking'">
+                <span class="rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
+                  Resolve automaticamente ao receber rastreio ou sair de Em transporte
+                </span>
                 <RouterLink
                   v-if="auth.isAdmin"
                   :to="{ name: 'integrations' }"
