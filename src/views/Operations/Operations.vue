@@ -16,6 +16,8 @@ const TRACKING_ISSUE_LABEL = {
   idworks_tracking_code_missing: 'Sem código na IDWorks',
   idworks_tracking_url_missing: 'Sem URL na IDWorks',
   idworks_order_not_found: 'Pedido não encontrado na IDWorks',
+  yampi_tracking_code_missing: 'Sem código na Yampi',
+  yampi_tracking_url_missing: 'Sem URL na Yampi',
   yampi_tracking_sync_not_confirmed: 'Falha ao sincronizar na Yampi',
   yampi_order_not_found: 'Pedido não encontrado na Yampi',
   tracking_reconciliation_error: 'Erro na validação do rastreio',
