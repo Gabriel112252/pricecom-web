@@ -42,8 +42,39 @@ function showOauthRedirectResult() {
   router.replace({ query: rest })
 }
 
-const { integration: idworksIntegration, fetchStatus: fetchIdworksStatus, connect: connectIdworks, sync: syncIdworks } =
-  useIdworks()
+const {
+  integrations: idworksIntegrations,
+  fetchStatus: fetchIdworksStatus,
+  connect: connectIdworks,
+  sync: syncIdworks,
+} = useIdworks()
+
+const IDWORKS_ACCOUNTS = [
+  { key: 'hidrabene', name: 'idworks', title: 'idworks — Hidrabene' },
+  { key: 'anasol', name: 'idworks Anasol', title: 'idworks — Anasol' },
+]
+
+const disconnectedIdworks = Object.freeze({
+  id: null,
+  status: 'disconnected',
+  last_synced_at: null,
+  recent_logs: [],
+})
+
+function idworksIntegrationFor(name) {
+  return idworksIntegrations.value.find((integration) => integration.name === name) || disconnectedIdworks
+}
+
+function connectIdworksAccount(name, credentials) {
+  return connectIdworks(name, credentials)
+}
+
+function syncIdworksAccount(name) {
+  const integration = idworksIntegrationFor(name)
+  if (!integration.id) return Promise.reject(new Error('Integração idworks ainda não conectada'))
+  return syncIdworks(integration.id)
+}
+
 const { source: pagarmeSource, fetchStatus: fetchPagarmeStatus, connect: connectPagarme, sync: syncPagarme } =
   usePagarme()
 
@@ -104,18 +135,21 @@ onMounted(() => {
 
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <SimpleCredentialCard
-          title="idworks"
-          :status="idworksIntegration.status"
-          :last-synced-at="idworksIntegration.last_synced_at"
-          :recent-logs="idworksIntegration.recent_logs || []"
+          v-for="account in IDWORKS_ACCOUNTS"
+          :key="account.key"
+          :title="account.title"
+          :status="idworksIntegrationFor(account.name).status"
+          :last-synced-at="idworksIntegrationFor(account.name).last_synced_at"
+          :recent-logs="idworksIntegrationFor(account.name).recent_logs || []"
           :fields="[
-            { key: 'base_url', label: 'URL base da API (ex: https://hidrabene.api-idworks.com.br/1.0)' },
+            { key: 'base_url', label: 'URL base da API idworks' },
             { key: 'email', label: 'E-mail' },
             { key: 'password', label: 'Senha', secret: true },
           ]"
-          :on-connect="connectIdworks"
-          :on-sync="syncIdworks"
+          :on-connect="(credentials) => connectIdworksAccount(account.name, credentials)"
+          :on-sync="() => syncIdworksAccount(account.name)"
         />
+
         <SimpleCredentialCard
           title="Pagar.me"
           :status="pagarmeSource.status"
