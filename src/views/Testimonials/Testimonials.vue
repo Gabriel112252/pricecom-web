@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue'
 import api, { assetUrl } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
-import { formatDateTime } from '@/lib/format'
 import StatusBadge from '@/components/StatusBadge.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import TestimonialFormModal from './TestimonialFormModal.vue'
@@ -21,6 +20,7 @@ const SOURCE_TYPE_LABELS = {
   manual: 'Manual',
   tiktok: 'TikTok',
   shopee: 'Shopee',
+  mercadolivre: 'Mercado Livre',
 }
 
 const SOURCE_TYPE_FILTER_OPTIONS = [
@@ -37,13 +37,31 @@ const loading = ref(true)
 const errorMessage = ref('')
 const statusFilter = ref('')
 const sourceTypeFilter = ref('')
+const integrationFilter = ref('')
+const idworksIntegrations = ref([])
 const page = ref(1)
 const workingId = ref(null)
-const editingTestimonial = ref(undefined) // undefined: modal fechado; null: criar; object: editar
+const editingTestimonial = ref(undefined)
 const showBulkImport = ref(false)
 
 function isVideoUrl(url) {
   return /\.(mp4|mov|webm)$/i.test(url || '')
+}
+
+function storeLabel(integration) {
+  const name = (integration?.name || '').toLowerCase()
+  if (name.includes('anasol')) return 'Anasol'
+  if (name === 'idworks' || name.includes('hidrabene')) return 'Hidrabene'
+  return integration?.name || `IDWorks #${integration?.id}`
+}
+
+async function loadStores() {
+  try {
+    const { data } = await api.get('/integrations', { params: { provider: 'idworks' } })
+    idworksIntegrations.value = Array.isArray(data) ? data : []
+  } catch {
+    idworksIntegrations.value = []
+  }
 }
 
 async function load() {
@@ -54,6 +72,7 @@ async function load() {
       params: {
         status: statusFilter.value || undefined,
         source_type: sourceTypeFilter.value || undefined,
+        integration_id: integrationFilter.value || undefined,
         page: page.value,
         per_page: 25,
       },
@@ -67,7 +86,10 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  loadStores()
+  load()
+})
 
 function onFilterChange() {
   page.value = 1
@@ -97,8 +119,6 @@ function onSaved() {
   load()
 }
 
-// Só recarrega a lista por baixo — o modal continua aberto mostrando o
-// relatório final (sucessos/falhas por linha) até o usuário fechar.
 function onBulkImported() {
   load()
 }
@@ -134,7 +154,7 @@ async function destroyTestimonial(testimonial) {
 
 <template>
   <div class="space-y-6 p-6 lg:p-8">
-    <PageHeader title="Depoimentos" subtitle="Curadoria de depoimentos de clientes pra geração de conteúdo de marketing.">
+    <PageHeader title="Depoimentos" subtitle="Curadoria de depoimentos por loja, produto e origem.">
       <template v-if="auth.isAdmin" #actions>
         <button
           type="button"
@@ -158,6 +178,17 @@ async function destroyTestimonial(testimonial) {
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
+      <select
+        v-model="integrationFilter"
+        class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+        @change="onFilterChange"
+      >
+        <option value="">Todas as lojas</option>
+        <option v-for="integration in idworksIntegrations" :key="integration.id" :value="integration.id">
+          {{ storeLabel(integration) }}
+        </option>
+      </select>
+
       <select
         v-model="statusFilter"
         class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
@@ -238,15 +269,22 @@ async function destroyTestimonial(testimonial) {
                 {{ testimonial.quote_text || '—' }}
               </td>
               <td class="px-4 py-2 text-center tabular-nums text-slate-700">{{ testimonial.rating ?? '—' }}</td>
-              <td class="px-4 py-2 text-slate-600">{{ SOURCE_TYPE_LABELS[testimonial.source_type] || testimonial.source_type }}</td>
+              <td class="px-4 py-2 text-slate-600">
+                <a
+                  v-if="testimonial.external_url"
+                  :href="testimonial.external_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="font-medium text-indigo-600 hover:underline"
+                >
+                  {{ SOURCE_TYPE_LABELS[testimonial.source_type] || testimonial.source_type }}
+                </a>
+                <span v-else>{{ SOURCE_TYPE_LABELS[testimonial.source_type] || testimonial.source_type }}</span>
+              </td>
               <td class="px-4 py-2"><StatusBadge :status="testimonial.status" /></td>
               <td class="px-4 py-2 text-right">
                 <div class="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    class="text-xs font-medium text-slate-500 hover:underline"
-                    @click="openEdit(testimonial)"
-                  >
+                  <button type="button" class="text-xs font-medium text-slate-500 hover:underline" @click="openEdit(testimonial)">
                     Editar
                   </button>
                   <button
