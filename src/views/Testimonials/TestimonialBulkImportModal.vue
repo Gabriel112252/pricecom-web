@@ -3,17 +3,12 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import api from '@/lib/api'
 
 const emit = defineEmits(['close', 'imported'])
-
-// pending/processing: enquanto o job roda em background (ver
-// Testimonials::ProcessBulkImportJob) — o backend responde ao POST na
-// hora, e este componente faz polling de
-// GET /testimonials/bulk_import/:id até status virar done/failed.
 const POLL_INTERVAL_MS = 2000
 
 const zipFile = ref(null)
 const uploading = ref(false)
 const uploadError = ref('')
-const bulkImport = ref(null) // { id, status, total_rows, processed_rows, error_rows, errors, finished_at }
+const bulkImport = ref(null)
 let pollTimer = null
 
 function onFileChange(event) {
@@ -46,8 +41,7 @@ function pollStatus() {
       const { data } = await api.get(`/testimonials/bulk_import/${bulkImport.value.id}`)
       bulkImport.value = data
     } catch {
-      // Erro pontual de rede no polling — tenta de novo no próximo tick,
-      // sem derrubar a tela nem parar de tentar.
+      // erro pontual de rede: tenta novamente no próximo tick
     }
     if (['done', 'failed'].includes(bulkImport.value?.status)) {
       emit('imported')
@@ -62,8 +56,6 @@ onBeforeUnmount(() => clearTimeout(pollTimer))
 const isProcessing = computed(() => bulkImport.value && ['pending', 'processing'].includes(bulkImport.value.status))
 const isDone = computed(() => bulkImport.value?.status === 'done')
 const isFailed = computed(() => bulkImport.value?.status === 'failed')
-// Import inteiro não pôde nem começar (ZIP sem .csv, cabeçalho errado) —
-// nesse caso errors traz um único item sem "row"/"sku", só "error".
 const wholeImportError = computed(() => isFailed.value && bulkImport.value.errors?.[0]?.error)
 const successCount = computed(() => (bulkImport.value?.processed_rows || 0))
 const rowErrors = computed(() => (isDone.value ? bulkImport.value.errors || [] : []))
@@ -79,9 +71,15 @@ const rowErrors = computed(() => (isDone.value ? bulkImport.value.errors || [] :
 
       <div v-if="!bulkImport" class="mt-4 space-y-4">
         <p class="text-sm text-slate-600">
-          Um arquivo <strong>.zip</strong> contendo um CSV na raiz (colunas: <code>sku, customer_name, rating,
-          quote_text, image_filename</code>) e as fotos soltas, também na raiz, com o nome exato referenciado em
-          <code>image_filename</code>.
+          Envie um <strong>.zip</strong> com um CSV na raiz. Colunas obrigatórias:
+          <code>sku, customer_name, rating, quote_text, image_filename</code>.
+          <code>image_filename</code> pode ficar vazio quando a avaliação não tiver foto.
+        </p>
+
+        <p class="text-xs text-slate-500">
+          Colunas opcionais: <code>source_type</code> (ex.: <code>mercadolivre</code>) e
+          <code>external_url</code> para manter o link da avaliação original. As imagens presentes devem ficar soltas
+          na raiz do ZIP com o nome exato usado em <code>image_filename</code>.
         </p>
 
         <div>
@@ -94,7 +92,7 @@ const rowErrors = computed(() => (isDone.value ? bulkImport.value.errors || [] :
         </div>
 
         <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-          Todos os depoimentos entram como rascunho — nada é publicado automaticamente, mesmo em lote.
+          Todos os depoimentos entram como rascunho. Nada é publicado automaticamente.
         </p>
 
         <div v-if="uploadError" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
