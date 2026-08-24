@@ -2,31 +2,28 @@ import { ref } from 'vue'
 import api from '@/lib/api'
 
 export function useIdworks() {
-  const integration = ref({ status: 'disconnected', last_synced_at: null, recent_logs: [] })
+  const integrations = ref([])
 
-  // Reuses the generic /integrations index (provider filter) instead of a
-  // dedicated status endpoint — idworks is just an Integration record.
   async function fetchStatus() {
     try {
       const { data } = await api.get('/integrations', { params: { provider: 'idworks' } })
-      if (data[0]) integration.value = data[0]
+      integrations.value = Array.isArray(data) ? data : []
     } catch {
-      // fica com o status padrão (desconectado) — não bloqueia o resto da tela
+      integrations.value = []
     }
   }
 
-  async function connect(credentials) {
-    const { data } = await api.post('/integrations/idworks/connect', { credentials })
-    integration.value = { ...integration.value, ...data }
+  async function connect(name, credentials) {
+    const { data } = await api.post('/integrations/idworks/connect', { name, credentials })
+    await fetchStatus()
     return data
   }
 
-  async function sync() {
-    const { data } = await api.post('/integrations/idworks/sync')
+  async function sync(integrationId) {
+    const { data } = await api.post('/integrations/idworks/sync', { integration_id: integrationId })
     // Always refresh — a failed sync (e.g. credentials expired mid-flight)
-    // flips the integration to status "error" server-side, and the card
-    // needs to show that regardless of whether this particular sync call
-    // itself succeeded or failed.
+    // flips the selected integration to status "error" server-side, and the
+    // corresponding card needs to show that state immediately.
     await fetchStatus()
     return {
       success: data.success,
@@ -35,5 +32,5 @@ export function useIdworks() {
     }
   }
 
-  return { integration, fetchStatus, connect, sync }
+  return { integrations, fetchStatus, connect, sync }
 }
