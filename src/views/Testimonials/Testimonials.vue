@@ -46,6 +46,7 @@ const sourceTypeFilter = ref('')
 const storeFilter = ref('')
 const page = ref(1)
 const workingId = ref(null)
+const bulkApproving = ref(false)
 const editingTestimonial = ref(undefined)
 const showBulkImport = ref(false)
 
@@ -109,6 +110,60 @@ function onBulkImported() {
   load()
 }
 
+async function bulkApproveDrafts() {
+  if (bulkApproving.value) return
+
+  const confirmed = window.confirm(
+    'Aprovar todos os depoimentos em rascunho que correspondem aos filtros atuais de loja e origem?\n\n' +
+      'Itens já aprovados, publicados ou rejeitados não serão alterados.',
+  )
+  if (!confirmed) return
+
+  bulkApproving.value = true
+  let approvedCount = 0
+
+  try {
+    while (true) {
+      const { data } = await api.get('/testimonials', {
+        params: {
+          status: 'draft',
+          source_type: sourceTypeFilter.value || undefined,
+          loja: storeFilter.value || undefined,
+          page: 1,
+          per_page: 100,
+        },
+      })
+
+      const drafts = data.testimonials || []
+      if (drafts.length === 0) break
+
+      const results = await Promise.allSettled(
+        drafts.map((testimonial) => api.post(`/testimonials/${testimonial.id}/approve`)),
+      )
+      const approvedInBatch = results.filter((result) => result.status === 'fulfilled').length
+      const failedInBatch = results.length - approvedInBatch
+      approvedCount += approvedInBatch
+
+      if (failedInBatch > 0) {
+        toast.error(`${approvedCount} aprovado(s); ${failedInBatch} falharam. Tente novamente.`)
+        await load()
+        return
+      }
+    }
+
+    if (approvedCount > 0) {
+      toast.success(`${approvedCount} depoimento(s) aprovado(s).`)
+    } else {
+      toast.success('Nenhum depoimento em rascunho pendente para aprovar.')
+    }
+    await load()
+  } catch (e) {
+    toast.error(e.response?.data?.error || 'Não foi possível aprovar os depoimentos em massa.')
+  } finally {
+    bulkApproving.value = false
+  }
+}
+
 async function runTransition(testimonial, action) {
   workingId.value = testimonial.id
   try {
@@ -142,6 +197,15 @@ async function destroyTestimonial(testimonial) {
   <div class="space-y-6 p-6 lg:p-8">
     <PageHeader title="Depoimentos" subtitle="Curadoria de depoimentos por loja, produto e origem.">
       <template v-if="auth.isAdmin" #actions>
+        <button
+          v-if="['', 'draft'].includes(statusFilter)"
+          type="button"
+          :disabled="bulkApproving"
+          class="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+          @click="bulkApproveDrafts"
+        >
+          {{ bulkApproving ? 'Aprovando...' : 'Aprovar pendentes' }}
+        </button>
         <button
           type="button"
           class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
@@ -321,7 +385,7 @@ async function destroyTestimonial(testimonial) {
           type="button"
           class="rounded border border-slate-200 px-3 py-1.5 font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           :disabled="(meta.current_page || 1) <= 1 || loading"
-          @click="goToPage((meta.current_page || 1) - 1)"
+          @click="goToPage((meta.current_page || 1) - 1"
         >
           Anterior
         </button>
