@@ -28,12 +28,13 @@ api.interceptors.response.use(
   },
 )
 
-// ActiveStorage URLs (Testimonial#media_url) come back as paths, not full
-// URLs — the API is API-only (no view layer to host an absolute host
-// default for `rails_blob_path`), so we prefix them with the API's origin
-// on the frontend instead.
+// ActiveStorage URLs do admin chegam como paths relativos e precisam do
+// origin da API. Imagens públicas importadas de marketplaces já chegam como
+// URL absoluta e devem ser usadas sem alteração.
 export function assetUrl(path) {
   if (!path) return null
+  if (/^https?:\/\//i.test(path)) return path
+
   const apiOrigin = (
     import.meta.env.VITE_API_BASE_URL || 'https://pricecom-pricecom-api.dzxtro.easypanel.host/api/v1'
   ).replace(/\/api\/v1\/?$/, '')
