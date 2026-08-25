@@ -11,6 +11,7 @@ const OPEN_STOCK_STATUSES = [ 'pending', 'awaiting_confirmation', 'insufficient_
 const ANOMALY_TYPES = [ 'order_volume_drop', 'sku_volume_drop' ]
 const YAMPI_IDWORKS_OPERATION_TYPE = 'yampi_order_not_integrated'
 const YAMPI_TRACKING_OPERATION_TYPE = 'yampi_tracking_not_synced'
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
 
 const TRACKING_ISSUE_LABEL = {
   idworks_tracking_code_missing: 'Sem código na IDWorks',
@@ -110,6 +111,11 @@ function toTime(value) {
   return Number.isNaN(parsed) ? 0 : parsed
 }
 
+function isRecent(value) {
+  const time = toTime(value)
+  return time > 0 && time >= Date.now() - ONE_DAY_MS
+}
+
 function anomalyDescription(conflict) {
   const metadata = conflict.metadata || {}
   const expected = Number(conflict.expected_value || 0)
@@ -166,7 +172,14 @@ function trackingTechnicalDescription(conflict) {
 }
 
 const integrationIssues = computed(() =>
-  integrationHealth.value.filter((item) => [ 'error', 'pending' ].includes(item.health_status))
+  integrationHealth.value.filter((item) => {
+    if (item.health_status === 'pending') return true
+    if (item.health_status !== 'error') return false
+
+    return Number(item.logs_error_last_24h || 0) > 0
+      || isRecent(item.last_error_at)
+      || isRecent(item.last_event_error_at)
+  })
 )
 
 const queue = computed(() => {
@@ -179,12 +192,13 @@ const queue = computed(() => {
     title: health.name || health.channel_name || health.provider || `Integração #${health.id}`,
     description:
       health.health_status === 'error'
-        ? 'A integração apresentou uma falha que ainda está afetando o estado atual.'
+        ? 'A integração apresentou uma falha recente que ainda precisa de atenção.'
         : `${health.events_pending_count || 0} evento(s) aguardando processamento.`,
     technicalDescription:
       health.health_status === 'error'
-        ? `${health.logs_error_last_24h || 0} falha(s) de sync nas últimas 24h · ${health.events_error_count || 0} evento(s) com erro no histórico`
+        ? `${health.logs_error_last_24h || 0} falha(s) de sync nas últimas 24h · última falha ${formatDateTime(health.last_event_error_at || health.last_error_at) || 'sem horário'}`
         : null,
+    technicalError: health.health_status === 'error',
     timestamp: health.last_event_error_at || health.last_error_at || health.last_event_at || health.last_synced_at,
     raw: health,
   }))
@@ -205,6 +219,7 @@ const queue = computed(() => {
             ? 'Reposição aguardando confirmação.'
             : 'Alerta de estoque aguardando processamento.',
     technicalDescription: `Reserva livre: ${formatStockQty(alert.qty_at_trigger) ?? '—'} · Reposição sugerida: ${formatStockQty(alert.suggested_replenishment_qty) ?? '—'} · Canal: ${alert.channel || 'sem canal alvo'}`,
+    technicalError: false,
     timestamp: alert.executed_at || alert.created_at,
     raw: alert,
   }))
@@ -238,8 +253,9 @@ const queue = computed(() => {
       technicalDescription: tracking
         ? trackingTechnicalDescription(conflict)
         : unintegrated
-          ? (metadata.last_error ? `Último erro: ${metadata.last_error}` : 'O integrador revalida automaticamente e remove esta pendência assim que o mapping IDWorks existir.')
+          ? (metadata.last_error ? `Erro IDWorks: ${metadata.last_error}` : 'O integrador revalida automaticamente e remove esta pendência assim que o mapping IDWorks existir.')
           : anomaly ? 'Baseline: mesmo horário das 4 semanas anteriores.' : null,
+      technicalError: Boolean(metadata.last_error),
       timestamp: tracking
         ? (metadata.detected_at || metadata.last_checked_at || conflict.updated_at || conflict.created_at)
         : unintegrated
@@ -347,16 +363,16 @@ async function reprocessUnintegratedOrder(item) {
 }
 
 async function updateConflict(item, status) {
-  const verb = status === 'resolved' ? 'resolver' : 'ignorar'
-  if (!window.confirm(`Deseja ${verb} este conflito?`)) return
+  const verb = status === 'resolved' ? 'resolver' : 'ocultar'
+  if (!window.confirm(`Deseja ${verb} esta pendência?`)) return
 
   workingKey.value = item.key
   try {
     await api.patch(`/audit_conflicts/${item.raw.id}`, { status })
-    toast.success(status === 'resolved' ? 'Conflito resolvido.' : 'Conflito ignorado.')
+    toast.success(status === 'resolved' ? 'Pendência resolvida.' : 'Pendência ocultada.')
     await load()
   } catch {
-    toast.error('Não foi possível atualizar o conflito.')
+    toast.error('Não foi possível atualizar a pendência.')
   } finally {
     workingKey.value = null
   }
@@ -482,7 +498,13 @@ async function testWhatsappAlert() {
               </div>
               <h3 class="mt-2 break-words text-sm font-semibold text-slate-900 sm:text-base">{{ item.title }}</h3>
               <p class="mt-1 break-words text-sm text-slate-600">{{ item.description }}</p>
-              <p v-if="item.technicalDescription" class="mt-1 break-words text-xs text-slate-400">{{ item.technicalDescription }}</p>
+              <p
+                v-if="item.technicalDescription"
+                class="mt-1 break-words text-xs"
+                :class="item.technicalError ? 'font-medium text-red-600' : 'text-slate-400'"
+              >
+                {{ item.technicalDescription }}
+              </p>
               <p v-if="item.timestamp" class="mt-2 text-xs text-slate-400">{{ formatDateTime(item.timestamp) }}</p>
             </div>
 
@@ -497,6 +519,15 @@ async function testWhatsappAlert() {
                 >
                   {{ workingKey === item.key ? 'Reprocessando...' : 'Reprocessar' }}
                 </button>
+                <button
+                  v-if="auth.isAdmin && item.raw.conflict_type === YAMPI_IDWORKS_OPERATION_TYPE"
+                  type="button"
+                  :disabled="workingKey === item.key"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  @click="updateConflict(item, 'ignored')"
+                >
+                  Ocultar
+                </button>
                 <RouterLink
                   v-if="auth.isAdmin"
                   :to="{ name: 'integrations' }"
@@ -510,6 +541,15 @@ async function testWhatsappAlert() {
                 <span class="rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
                   Resolve automaticamente ao receber rastreio ou sair de Em transporte
                 </span>
+                <button
+                  v-if="auth.isAdmin && item.raw.conflict_type === YAMPI_TRACKING_OPERATION_TYPE"
+                  type="button"
+                  :disabled="workingKey === item.key"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  @click="updateConflict(item, 'ignored')"
+                >
+                  Ocultar
+                </button>
                 <RouterLink
                   v-if="auth.isAdmin"
                   :to="{ name: 'integrations' }"
@@ -567,7 +607,7 @@ async function testWhatsappAlert() {
                   class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                   @click="updateConflict(item, 'ignored')"
                 >
-                  Ignorar
+                  Ocultar
                 </button>
                 <RouterLink
                   :to="{ name: 'audit', query: { severity: item.raw.severity } }"
