@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useChannelCredentials } from './composables/useChannelCredentials'
 import { useIdworks } from './composables/useIdworks'
@@ -49,11 +49,6 @@ const {
   sync: syncIdworks,
 } = useIdworks()
 
-const IDWORKS_ACCOUNTS = [
-  { key: 'hidrabene', name: 'idworks', title: 'idworks — Hidrabene' },
-  { key: 'anasol', name: 'idworks Anasol', title: 'idworks — Anasol' },
-]
-
 const disconnectedIdworks = Object.freeze({
   id: null,
   status: 'disconnected',
@@ -61,18 +56,21 @@ const disconnectedIdworks = Object.freeze({
   recent_logs: [],
 })
 
-function idworksIntegrationFor(name) {
-  return idworksIntegrations.value.find((integration) => integration.name === name) || disconnectedIdworks
+const idworksIntegration = computed(() => {
+  return (
+    idworksIntegrations.value.find((integration) => integration.name === 'idworks') ||
+    idworksIntegrations.value[0] ||
+    disconnectedIdworks
+  )
+})
+
+function connectSharedIdworks(credentials) {
+  return connectIdworks('idworks', credentials)
 }
 
-function connectIdworksAccount(name, credentials) {
-  return connectIdworks(name, credentials)
-}
-
-function syncIdworksAccount(name) {
-  const integration = idworksIntegrationFor(name)
-  if (!integration.id) return Promise.reject(new Error('Integração idworks ainda não conectada'))
-  return syncIdworks(integration.id)
+function syncSharedIdworks() {
+  if (!idworksIntegration.value.id) return Promise.reject(new Error('Integração idworks ainda não conectada'))
+  return syncIdworks(idworksIntegration.value.id)
 }
 
 const { source: pagarmeSource, fetchStatus: fetchPagarmeStatus, connect: connectPagarme, sync: syncPagarme } =
@@ -135,19 +133,17 @@ onMounted(() => {
 
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <SimpleCredentialCard
-          v-for="account in IDWORKS_ACCOUNTS"
-          :key="account.key"
-          :title="account.title"
-          :status="idworksIntegrationFor(account.name).status"
-          :last-synced-at="idworksIntegrationFor(account.name).last_synced_at"
-          :recent-logs="idworksIntegrationFor(account.name).recent_logs || []"
+          title="IDWorks — Hidrabene + Anasol"
+          :status="idworksIntegration.status"
+          :last-synced-at="idworksIntegration.last_synced_at"
+          :recent-logs="idworksIntegration.recent_logs || []"
           :fields="[
             { key: 'base_url', label: 'URL base da API idworks' },
             { key: 'email', label: 'E-mail' },
             { key: 'password', label: 'Senha', secret: true },
           ]"
-          :on-connect="(credentials) => connectIdworksAccount(account.name, credentials)"
-          :on-sync="() => syncIdworksAccount(account.name)"
+          :on-connect="connectSharedIdworks"
+          :on-sync="syncSharedIdworks"
         />
 
         <SimpleCredentialCard
