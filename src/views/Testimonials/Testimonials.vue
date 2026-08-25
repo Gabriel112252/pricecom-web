@@ -28,6 +28,12 @@ const SOURCE_TYPE_FILTER_OPTIONS = [
   ...Object.entries(SOURCE_TYPE_LABELS).map(([value, label]) => ({ value, label })),
 ]
 
+const STORE_FILTER_OPTIONS = [
+  { value: '', label: 'Todas as lojas' },
+  { value: 'hidrabene', label: 'Hidrabene' },
+  { value: 'anasol', label: 'Anasol' },
+]
+
 const auth = useAuthStore()
 const toast = useToast()
 
@@ -37,8 +43,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 const statusFilter = ref('')
 const sourceTypeFilter = ref('')
-const integrationFilter = ref('')
-const idworksIntegrations = ref([])
+const storeFilter = ref('')
 const page = ref(1)
 const workingId = ref(null)
 const editingTestimonial = ref(undefined)
@@ -46,22 +51,6 @@ const showBulkImport = ref(false)
 
 function isVideoUrl(url) {
   return /\.(mp4|mov|webm)$/i.test(url || '')
-}
-
-function storeLabel(integration) {
-  const name = (integration?.name || '').toLowerCase()
-  if (name.includes('anasol')) return 'Anasol'
-  if (name === 'idworks' || name.includes('hidrabene')) return 'Hidrabene'
-  return integration?.name || `IDWorks #${integration?.id}`
-}
-
-async function loadStores() {
-  try {
-    const { data } = await api.get('/integrations', { params: { provider: 'idworks' } })
-    idworksIntegrations.value = Array.isArray(data) ? data : []
-  } catch {
-    idworksIntegrations.value = []
-  }
 }
 
 async function load() {
@@ -72,7 +61,7 @@ async function load() {
       params: {
         status: statusFilter.value || undefined,
         source_type: sourceTypeFilter.value || undefined,
-        integration_id: integrationFilter.value || undefined,
+        loja: storeFilter.value || undefined,
         page: page.value,
         per_page: 25,
       },
@@ -86,10 +75,7 @@ async function load() {
   }
 }
 
-onMounted(() => {
-  loadStores()
-  load()
-})
+onMounted(load)
 
 function onFilterChange() {
   page.value = 1
@@ -179,14 +165,11 @@ async function destroyTestimonial(testimonial) {
 
     <div class="flex flex-wrap items-center gap-2">
       <select
-        v-model="integrationFilter"
+        v-model="storeFilter"
         class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
         @change="onFilterChange"
       >
-        <option value="">Todas as lojas</option>
-        <option v-for="integration in idworksIntegrations" :key="integration.id" :value="integration.id">
-          {{ storeLabel(integration) }}
-        </option>
+        <option v-for="opt in STORE_FILTER_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
 
       <select
