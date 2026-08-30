@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/lib/api'
-import { formatMoney, formatMoneyOrDash, formatPct, formatStockQty } from '@/lib/format'
+import { formatMoneyOrDash, formatPct, formatStockQty } from '@/lib/format'
 import { DASHBOARD_TABS } from './lib/tabs'
 import PageHeader from '@/components/PageHeader.vue'
 import TabNav from '@/components/TabNav.vue'
@@ -161,18 +161,6 @@ function ordersDetail() {
 
   return `${total} pedidos no período`
 }
-
-function couponDetail() {
-  if (Number(kpis.value.shipping_subsidy_total || 0) > 0) {
-    return `${formatMoney(kpis.value.shipping_subsidy_total)} de frete subsidiado · ${kpis.value.shipping_subsidy_orders_count ?? 0} pedidos`
-  }
-
-  if (coupons.value.has_coupon_codes) {
-    return `${kpis.value.coupon_orders_count ?? 0} pedidos · ${formatPct(kpis.value.coupon_usage_percentage)}`
-  }
-
-  return `${kpis.value.commercial_discount_orders_count ?? 0} descontos sem código`
-}
 </script>
 
 <template>
@@ -219,10 +207,11 @@ function couponDetail() {
               tooltip="Receita efetiva do período dividida pelo total de pedidos."
             />
             <ExecutiveKpiCard
-              label="Descontos"
-              :value="formatMoney(kpis.coupon_discount_total)"
-              :detail="couponDetail()"
-              tooltip="Somente valor bancado pelo vendedor: cupons identificados, descontos comerciais sem código, subsídio de frete estimado e desconto do vendedor TikTok. Subsídio pago pela TikTok aparece em 'Incentivos da plataforma', nunca somado aqui."
+              label="Margem de contribuição"
+              :value="kpis.contribution_margin_available ? formatPct(kpis.contribution_margin) : '—'"
+              :detail="kpis.contribution_margin_available ? 'Resultado após custos, frete, taxas e comissões' : 'Cobertura de custos incompleta'"
+              :status="kpis.contribution_margin_available ? 'default' : 'warning'"
+              :tooltip="kpis.contribution_margin_available ? 'Margem do resultado do período sobre a receita líquida.' : (kpis.contribution_margin_unavailable_reason || 'Ainda faltam custos para calcular a margem com segurança.')"
             />
           </div>
 
