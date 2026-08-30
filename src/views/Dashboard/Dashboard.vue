@@ -11,11 +11,9 @@ import PeriodFilter from './PeriodFilter.vue'
 import ChannelFilter from './ChannelFilter.vue'
 import ExecutiveKpiCard from './ExecutiveKpiCard.vue'
 import RevenueBreakdownCard from './RevenueBreakdownCard.vue'
-import RevenueOrdersChart from './RevenueOrdersChart.vue'
-import SalesByChannelChart from './SalesByChannelChart.vue'
+import ChannelExecutiveSummary from './ChannelExecutiveSummary.vue'
 import FinancialTab from './FinancialTab.vue'
 import { FINANCE_SUBTABS } from './lib/financeTabs'
-import BrazilOrdersMap from './BrazilOrdersMap.vue'
 import DiscountCompositionCard from './DiscountCompositionCard.vue'
 import DiscountTicketExposureCard from './DiscountTicketExposureCard.vue'
 import CartAbandonmentCard from './CartAbandonmentCard.vue'
@@ -120,9 +118,7 @@ const dataQuality = computed(() => summary.value?.data_quality ?? {})
 const marginDataAvailable = computed(() => dataQuality.value.financial_status === 'complete')
 const financialComposition = computed(() => summary.value?.financial_composition ?? {})
 const financial = computed(() => summary.value?.financial ?? {})
-const revenueTimeline = computed(() => summary.value?.revenue_timeline ?? summary.value?.revenue?.by_day ?? [])
 const salesByChannel = computed(() => summary.value?.sales_by_channel ?? [])
-const regionalSales = computed(() => summary.value?.regional_sales ?? {})
 const coupons = computed(() => summary.value?.coupons ?? {})
 const cartAbandonment = computed(() => summary.value?.cart_abandonment ?? {})
 const freightMargin = computed(() => summary.value?.freight_margin ?? {})
@@ -202,7 +198,7 @@ function couponDetail() {
       <TabNav :tabs="DASHBOARD_TABS" v-model="activeTab" />
 
       <div class="space-y-6 transition-opacity" :class="{ 'opacity-60': loading }">
-        <!-- Visão Geral -->
+        <!-- Visão Geral: resumo executivo; análises detalhadas ficam nas abas específicas. -->
         <section v-show="activeTab === 'overview'" class="space-y-6">
           <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <RevenueBreakdownCard
@@ -230,12 +226,7 @@ function couponDetail() {
             />
           </div>
 
-          <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <RevenueOrdersChart :timeline="revenueTimeline" :granularity="granularity" />
-            <SalesByChannelChart :channels="salesByChannel" />
-          </div>
-
-          <BrazilOrdersMap :regional-sales="regionalSales" />
+          <ChannelExecutiveSummary :channels="salesByChannel" />
         </section>
 
         <!-- Vendas -->
