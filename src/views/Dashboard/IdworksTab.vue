@@ -9,6 +9,7 @@ import SalesByChannelChart from './SalesByChannelChart.vue'
 import HorizontalRankingChart from './HorizontalRankingChart.vue'
 import RealSkusSoldChannelTable from './RealSkusSoldChannelTable.vue'
 import ReconciliationTab from './ReconciliationTab.vue'
+import BlingPanel from './BlingPanel.vue'
 
 const props = defineProps({
   from: { type: String, required: true },
@@ -51,9 +52,19 @@ const realSkusSold = computed(() => data.value?.real_skus_sold || [])
 
 <template>
   <section class="space-y-6">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h2 class="text-sm font-semibold text-slate-900">Corte por loja</h2>
-      <LojaFilter v-model="loja" />
+    <BlingPanel :from="from" :to="to" />
+
+    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">ERP · IDWorks</p>
+          <h2 class="mt-1 text-lg font-semibold text-slate-900">Reconciliação completa</h2>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="text-sm font-semibold text-slate-900">Corte por loja</span>
+          <LojaFilter v-model="loja" />
+        </div>
+      </div>
     </div>
 
     <div v-if="loading && !data" class="text-sm text-slate-500">Carregando dashboard idworks...</div>
