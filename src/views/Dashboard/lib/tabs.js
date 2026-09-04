@@ -6,7 +6,7 @@ export const DASHBOARD_TABS = [
   { key: 'discounts', label: 'Descontos & Cupons' },
   { key: 'products', label: 'Produtos' },
   { key: 'finance', label: 'Financeiro' },
-  { key: 'reconciliation', label: 'IDWorks' },
+  { key: 'reconciliation', label: 'ERPs · IDWorks + Bling' },
   // Clientes virou módulo próprio na sidebar: a base filtrável, RFM e
   // recompra precisam de espaço e contexto próprios, em vez de mais uma
   // subaba analítica do Dashboard.
