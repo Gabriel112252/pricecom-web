@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import api from '@/lib/api'
-import { formatStockQty } from '@/lib/format'
+import { formatDateTime, formatStockQty } from '@/lib/format'
 import Operations from './Operations.vue'
 
 const IDWORKS_MARKETPLACE_CHANNELS = [ 'Mercado Livre', 'Shopee', 'TikTok Shop' ]
@@ -9,6 +9,7 @@ const IDWORKS_MARKETPLACE_CHANNELS = [ 'Mercado Livre', 'Shopee', 'TikTok Shop' 
 const loading = ref(false)
 const idworksData = ref(null)
 const blingData = ref(null)
+const integrationHealth = ref([])
 const sourceErrors = ref([])
 
 function localISODate(date = new Date()) {
@@ -24,11 +25,12 @@ async function loadErpVolume() {
   loading.value = true
   sourceErrors.value = []
 
-  const [ idworksResult, blingResult ] = await Promise.allSettled([
+  const [ idworksResult, blingResult, healthResult ] = await Promise.allSettled([
     api.get('/idworks_dashboard', { params: { start_date: today, end_date: today } }),
     api.get('/integration_health', {
       params: { provider: 'bling', view: 'dashboard', date_from: today, date_to: today },
     }),
+    api.get('/integration_health'),
   ])
 
   if (idworksResult.status === 'fulfilled') {
@@ -43,6 +45,13 @@ async function loadErpVolume() {
   } else {
     blingData.value = null
     sourceErrors.value.push('Bling')
+  }
+
+  if (healthResult.status === 'fulfilled') {
+    integrationHealth.value = healthResult.value.data || []
+  } else {
+    integrationHealth.value = []
+    sourceErrors.value.push('Saúde das integrações')
   }
 
   loading.value = false
@@ -84,6 +93,47 @@ const topProducts = computed(() =>
     .sort((a, b) => b.marketplace_quantity - a.marketplace_quantity)
     .slice(0, 5)
 )
+
+const currentErpIssues = computed(() =>
+  integrationHealth.value
+    .filter((health) => {
+      if (![ 'error', 'pending' ].includes(health.health_status)) return false
+
+      const provider = String(health.provider || '').toLocaleLowerCase('pt-BR')
+      const identity = [ health.provider, health.name, health.channel_name ]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('pt-BR')
+
+      if (provider === 'bling') return true
+
+      // Yampi agora pertence ao Bling. Pendências históricas Yampi → IDWorks
+      // continuam acessíveis na fila técnica abaixo, mas não entram no cockpit atual.
+      if (identity.includes('yampi') && identity.includes('idworks')) return false
+
+      return provider === 'idworks' || identity.includes('idworks')
+    })
+    .sort((a, b) => {
+      if (a.health_status === b.health_status) return 0
+      return a.health_status === 'error' ? -1 : 1
+    })
+)
+
+function issueTitle(issue) {
+  return issue.name || issue.channel_name || issue.provider || 'ERP sem identificação'
+}
+
+function issueDescription(issue) {
+  if (issue.provider === 'bling') {
+    return issue.last_error_message || issue.message || 'Pendência operacional no fluxo Site/Yampi → Bling.'
+  }
+
+  if (issue.health_status === 'error') {
+    return issue.last_error_message || 'Falha recente na integração com o IDWorks.'
+  }
+
+  return `${Number(issue.events_pending_count || 0)} evento(s) aguardando processamento.`
+}
 </script>
 
 <template>
@@ -192,12 +242,44 @@ const topProducts = computed(() =>
         </div>
       </div>
 
-      <div class="border-t border-slate-200 pt-5">
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Exceções e pendências</p>
-        <p class="mt-1 text-sm text-slate-500">A fila abaixo continua concentrando integração, faturamento/rastreio, estoque, anomalias e auditoria.</p>
-      </div>
-    </section>
+      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Exceções ERP atuais</p>
+            <h2 class="mt-1 text-sm font-semibold text-slate-900">Somente IDWorks marketplaces e Bling Site/Yampi</h2>
+          </div>
+          <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{{ currentErpIssues.length }}</span>
+        </div>
 
-    <Operations />
+        <div v-if="currentErpIssues.length === 0" class="mt-4 rounded-lg bg-emerald-50 p-4 text-sm text-emerald-700">
+          Nenhuma exceção ativa dos ERPs no modelo atual.
+        </div>
+
+        <div v-else class="mt-4 divide-y divide-slate-100">
+          <div v-for="issue in currentErpIssues" :key="`${issue.provider}-${issue.id}`" class="py-3 first:pt-0 last:pb-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-sm font-semibold text-slate-900">{{ issueTitle(issue) }}</span>
+              <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold" :class="issue.health_status === 'error' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'">
+                {{ issue.health_status === 'error' ? 'Erro' : 'Pendente' }}
+              </span>
+              <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-slate-500">{{ issue.provider || 'ERP' }}</span>
+            </div>
+            <p class="mt-1 text-sm text-slate-600">{{ issueDescription(issue) }}</p>
+            <p v-if="issue.last_error_at || issue.last_event_error_at" class="mt-1 text-xs text-slate-400">
+              {{ formatDateTime(issue.last_event_error_at || issue.last_error_at) }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <details class="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <summary class="cursor-pointer px-5 py-4 text-sm font-semibold text-slate-700">
+          Fila técnica completa · estoque, auditoria e histórico legado
+        </summary>
+        <div class="border-t border-slate-100">
+          <Operations />
+        </div>
+      </details>
+    </section>
   </div>
 </template>
