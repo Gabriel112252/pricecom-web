@@ -1,12 +1,14 @@
 // Shared between Dashboard.vue (click-to-switch) and TvDashboard.vue
 // (auto-rotates through the same list) so both stay in sync.
+// Operação ERP vem primeiro: IDWorks/Bling são a fonte operacional principal;
+// lojas/canais e análises financeiras continuam disponíveis como contexto.
 export const DASHBOARD_TABS = [
+  { key: 'reconciliation', label: 'Operação ERP' },
   { key: 'overview', label: 'Visão Geral' },
   { key: 'sales', label: 'Vendas' },
-  { key: 'discounts', label: 'Descontos & Cupons' },
   { key: 'products', label: 'Produtos' },
+  { key: 'discounts', label: 'Descontos & Cupons' },
   { key: 'finance', label: 'Financeiro' },
-  { key: 'reconciliation', label: 'ERPs · IDWorks + Bling' },
   // Clientes virou módulo próprio na sidebar: a base filtrável, RFM e
   // recompra precisam de espaço e contexto próprios, em vez de mais uma
   // subaba analítica do Dashboard.
