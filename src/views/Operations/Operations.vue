@@ -198,8 +198,6 @@ const visibleQueue = computed(() => {
 })
 
 const criticalCount = computed(() => queue.value.filter((item) => item.severity === 'critical').length)
-const integrationCount = computed(() => queue.value.filter((item) => item.kind === 'integration').length)
-const anomalyCount = computed(() => queue.value.filter((item) => item.kind === 'anomaly').length)
 
 function countForFilter(key) {
   if (key === 'all') return queue.value.length
@@ -304,10 +302,11 @@ async function testWhatsappAlert() {
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-              <tr><th class="px-4 py-3">Fila</th><th class="px-4 py-3">Jobs</th><th class="px-4 py-3">Mais antigo</th><th class="px-4 py-3">Crescimento</th><th class="px-4 py-3">Duplicados</th><th class="px-4 py-3">Saúde</th></tr>
+              <tr><th class="px-4 py-3">Sistema</th><th class="px-4 py-3">Fila</th><th class="px-4 py-3">Jobs</th><th class="px-4 py-3">Mais antigo</th><th class="px-4 py-3">Crescimento</th><th class="px-4 py-3">Duplicados</th><th class="px-4 py-3">Saúde</th></tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="q in processingQueues" :key="q.name">
+              <tr v-for="q in processingQueues" :key="`${q.source || 'unknown'}-${q.name}`">
+                <td class="px-4 py-3 text-xs font-medium text-slate-500">{{ q.source_label || q.source || 'Pricecom' }}</td>
                 <td class="px-4 py-3 font-semibold text-slate-900">{{ q.name }}</td>
                 <td class="px-4 py-3">{{ q.size }}</td>
                 <td class="px-4 py-3">{{ formatDuration(q.latency_seconds) }}</td>
@@ -356,25 +355,27 @@ async function testWhatsappAlert() {
       <div v-if="loading && queue.length === 0" class="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Carregando operação...</div>
       <div v-else-if="visibleQueue.length === 0" class="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-700">Nenhuma pendência encontrada neste filtro.</div>
 
-      <article v-for="item in visibleQueue" v-else :key="item.key" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2"><span class="text-xs font-semibold uppercase text-slate-400">{{ item.kindLabel }}</span><span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="severityClass(item.severity)">{{ SEVERITY_LABEL[item.severity] || item.severity }}</span><span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{{ item.statusLabel }}</span></div>
-            <h3 class="mt-2 font-semibold text-slate-900">{{ item.title }}</h3>
-            <p class="mt-1 text-sm text-slate-600">{{ item.description }}</p>
-            <p v-if="item.technicalDescription" class="mt-1 text-xs font-medium text-red-600">{{ item.technicalDescription }}</p>
-            <p v-if="item.timestamp" class="mt-2 text-xs text-slate-400">{{ formatDateTime(item.timestamp) }}</p>
-          </div>
+      <template v-else>
+        <article v-for="item in visibleQueue" :key="item.key" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2"><span class="text-xs font-semibold uppercase text-slate-400">{{ item.kindLabel }}</span><span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="severityClass(item.severity)">{{ SEVERITY_LABEL[item.severity] || item.severity }}</span><span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{{ item.statusLabel }}</span></div>
+              <h3 class="mt-2 font-semibold text-slate-900">{{ item.title }}</h3>
+              <p class="mt-1 text-sm text-slate-600">{{ item.description }}</p>
+              <p v-if="item.technicalDescription" class="mt-1 text-xs font-medium text-red-600">{{ item.technicalDescription }}</p>
+              <p v-if="item.timestamp" class="mt-2 text-xs text-slate-400">{{ formatDateTime(item.timestamp) }}</p>
+            </div>
 
-          <div v-if="auth.isAdmin" class="flex shrink-0 flex-wrap gap-2">
-            <button v-if="item.raw.conflict_type === YAMPI_IDWORKS_OPERATION_TYPE" type="button" :disabled="workingKey === item.key" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50" @click="reprocessUnintegratedOrder(item)">Reprocessar</button>
-            <button v-if="item.kind === 'stock' && item.raw.status === 'awaiting_confirmation'" type="button" :disabled="workingKey === item.key" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50" @click="confirmStock(item)">Confirmar reposição</button>
-            <button v-if="item.kind === 'stock'" type="button" :disabled="workingKey === item.key" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 disabled:opacity-50" @click="dismissStock(item)">Dispensar</button>
-            <button v-if="item.raw.conflict_type" type="button" :disabled="workingKey === item.key" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 disabled:opacity-50" @click="updateConflict(item, 'ignored')">Ocultar</button>
-            <RouterLink v-if="item.kind === 'integration' || item.kind === 'tracking'" :to="{ name: 'integrations' }" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600">Ver integração</RouterLink>
+            <div v-if="auth.isAdmin" class="flex shrink-0 flex-wrap gap-2">
+              <button v-if="item.raw.conflict_type === YAMPI_IDWORKS_OPERATION_TYPE" type="button" :disabled="workingKey === item.key" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50" @click="reprocessUnintegratedOrder(item)">Reprocessar</button>
+              <button v-if="item.kind === 'stock' && item.raw.status === 'awaiting_confirmation'" type="button" :disabled="workingKey === item.key" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50" @click="confirmStock(item)">Confirmar reposição</button>
+              <button v-if="item.kind === 'stock'" type="button" :disabled="workingKey === item.key" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 disabled:opacity-50" @click="dismissStock(item)">Dispensar</button>
+              <button v-if="item.raw.conflict_type" type="button" :disabled="workingKey === item.key" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 disabled:opacity-50" @click="updateConflict(item, 'ignored')">Ocultar</button>
+              <RouterLink v-if="item.kind === 'integration' || item.kind === 'tracking'" :to="{ name: 'integrations' }" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600">Ver integração</RouterLink>
+            </div>
           </div>
-        </div>
-      </article>
+        </article>
+      </template>
     </section>
   </div>
 </template>
