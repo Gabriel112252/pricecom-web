@@ -35,7 +35,7 @@ const routes = [
       {
         path: 'operacao',
         name: 'operations',
-        component: () => import('@/views/Operations/Operations.vue'),
+        component: () => import('@/views/Operations/ErpOperations.vue'),
         meta: { title: 'Operação' },
       },
       {
