@@ -2,5 +2,6 @@
 export const AFFILIATE_TABS = [
   { key: 'overview', label: 'Visão Geral' },
   { key: 'my_affiliates', label: 'Meus Afiliados' },
+  { key: 'videos', label: 'Vídeos' },
   { key: 'campaigns', label: 'Campanhas' },
 ]
