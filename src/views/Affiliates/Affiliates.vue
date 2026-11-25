@@ -5,6 +5,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import TabNav from '@/components/TabNav.vue'
 import OverviewTab from './OverviewTab.vue'
 import MyAffiliatesTab from './MyAffiliatesTab.vue'
+import VideosTab from './VideosTab.vue'
 import CampaignsTab from './CampaignsTab.vue'
 
 const activeTab = ref(AFFILIATE_TABS[0].key)
@@ -21,6 +22,9 @@ const activeTab = ref(AFFILIATE_TABS[0].key)
     </section>
     <section v-show="activeTab === 'my_affiliates'" class="space-y-6">
       <MyAffiliatesTab />
+    </section>
+    <section v-show="activeTab === 'videos'" class="space-y-6">
+      <VideosTab />
     </section>
     <section v-show="activeTab === 'campaigns'" class="space-y-6">
       <CampaignsTab />
